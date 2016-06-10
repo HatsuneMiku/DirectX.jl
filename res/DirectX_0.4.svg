@@ -1,0 +1,12 @@
+<?xml version="1.0" standalone="no"?>
+<svg width="256px" height="256px" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1">
+<view id="v1" viewBox="0 0 128 128" />
+<view id="v2" viewBox="128 128 128 128" />
+<a xlink:href="#v2">
+<circle id="c1" cx="64" cy="64" r="48" fill="blue" />
+<polygon id="p1" points="128,48 64,128 192,128" fill="green"/>
+</a>
+<a xlink:href="#v1">
+<rect id="r1" x="96" y="96" width="128" height="64" fill="blue"/>
+</a>
+</svg>
