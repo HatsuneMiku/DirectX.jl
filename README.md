@@ -3,7 +3,11 @@ DirectX
 
 DirectX.jl is a Julia interface to the DirectX / Direct3D on Windows versions.
 
-[![DirectX](https://raw.githubusercontent.com/HatsuneMiku/DirectX.jl/master/res/DirectX_0.4.svg)](https://github.com/HatsuneMiku/DirectX.jl)
+[![DirectX](http://HatsuneMiku.github.io/DirectX.jl/res/DirectX_0.4.svg)](https://github.com/HatsuneMiku/DirectX.jl)
+
+
+<img src="http://HatsuneMiku.github.io/DirectX.jl/res/DirectX_0.4.svg">
+
 
 The documentation for this package is in the `examples` directory.
 
