@@ -7,6 +7,6 @@
 <polygon id="p1" points="128,48 64,128 192,128" fill="green"/>
 </a>
 <a xlink:href="#v1">
-<rect id="r1" x="96" y="96" width="128" height="64" fill="blue"/>
+<rect id="r1" x="128" y="96" width="96" height="128" fill="red"/>
 </a>
 </svg>
