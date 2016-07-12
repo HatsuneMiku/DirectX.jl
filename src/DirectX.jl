@@ -15,8 +15,10 @@ const Dx9ADL = :dx9adl
 
 type RenderD3DItemsState
   stat::UInt32
+  mode::UInt32
   hWnd::UInt32
   ppSprite::Ptr{Ptr{Void}} # LPD3DXSPRITE *
+  reserved::UInt32
   fps::UInt32
   prevTime::UInt32
   nowTime::UInt32
@@ -28,17 +30,18 @@ type Dx9adl
   istat::RenderD3DItemsState
 
   function Dx9adl()
-    return new(RenderD3DItemsState(0, 0, C_NULL, 0, 0, 0, 352, 198))
+    # set mode 0 to skip debugalloc/debugfree
+    return new(RenderD3DItemsState(0, 0, 0, C_NULL, 0, 0, 0, 0, 352, 198))
   end
 end
 
 function connect()
-  ccall((:debugalloc, D3DxConsole), Void, ()) # needless to call on Julia cons?
+# ccall((:debugalloc, D3DxConsole), Void, ()) # needless to call on Julia cons?
   return Dx9adl()
 end
 
 function close(d9::Dx9adl)
-  ccall((:debugfree, D3DxConsole), Void, ()) # can not call on Julia cons?
+# ccall((:debugfree, D3DxConsole), Void, ()) # can not call on Julia cons?
   return true
 end
 
@@ -67,7 +70,6 @@ end
 function initD3DApp(d9::Dx9adl)
   ccall((:debugout, D3DxConsole), Void, (Ptr{UInt8}, Ptr{RenderD3DItemsState}),
     "adl_test &d9.istat = %08X\n", &d9.istat)
-  # dummy hInstance - must create new hInstance ?
   hInst = ccall((:GetModuleHandleA, :kernel32), stdcall,
     UInt32, (Ptr{Void},),
     C_NULL)
@@ -84,16 +86,17 @@ function initD3DApp(d9::Dx9adl)
 end
 
 function msgLoop(d9::Dx9adl)
+  r = -1
   ccall((:debugout, D3DxConsole), Void, (Ptr{UInt8},), "in\n")
-  try # It will quit the process ? must create new hInstance in initD3DApp ?
+  try
     r = ccall((:MsgLoop, Dx9ADL),
       Cint, (Ptr{RenderD3DItemsState},),
       &d9.istat)
   catch err
-    ccall((:debugout, D3DxConsole), Void, (Ptr{UInt8},), "err\n") # not caught
+    ccall((:debugout, D3DxConsole), Void, (Ptr{UInt8},), "err\n")
     println(err)
   finally
-    ccall((:debugout, D3DxConsole), Void, (Ptr{UInt8},), "out\n") # not reach
+    ccall((:debugout, D3DxConsole), Void, (Ptr{UInt8},), "out\n")
   end
   return r
 end
