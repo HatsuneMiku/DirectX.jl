@@ -7,6 +7,9 @@ module DirectX
 export connect, close
 export initD3DApp, msgLoop
 
+const WIDTH = 880
+const HEIGHT = 495
+
 const D3D9 = :d3d9
 const D3DX9 = :d3dx9
 const D3DxConsole = :d3dxconsole
@@ -31,7 +34,7 @@ type Dx9adl
 
   function Dx9adl()
     # set mode 0 to skip debugalloc/debugfree
-    return new(RenderD3DItemsState(0, 0, 0, C_NULL, 0, 0, 0, 0, 352, 198))
+    return new(RenderD3DItemsState(0, 0, 0, C_NULL, 0, 0, 0, 0, WIDTH, HEIGHT))
   end
 end
 
