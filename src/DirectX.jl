@@ -12,20 +12,45 @@ export initD3DApp, msgLoop
 const WIDTH = 880
 const HEIGHT = 495
 
-const _rel = Dict{Symbol, Ptr{Void}}()
+immutable Rel
+  sym::Array{Symbol,1}
+  dct::Dict{Symbol, Ptr{Void}}
 
-function relp(rn::Symbol, fn::Symbol)
-  c = Base.Libdl.dlsym_e(_rel[rn], fn)
-  if c == C_NULL
-    throw(ArgumentError("not found function '$(fn)' in ':$(rn)'"))
+  function Rel(a::Array{Symbol,1}, d=Dict{Symbol, Ptr{Void}}())
+    r = new(a, d)
+    # finalizer(r, _close) # type must not be immutable / only called by gc() ?
+    return r
   end
-  return c
 end
 
-function relf()
-  for s in keys(_rel)
-    Base.Libdl.dlclose(_rel[s])
+function _init(r::Rel, resdll::AbstractString)
+  if isempty(r.dct)
+    for s in r.sym
+      r.dct[s] = Base.Libdl.dlopen_e(symbol(resdll, "/dll/", string(s)))
+      if r.dct[s] == C_NULL
+        throw(ArgumentError("not found module ':$(s)'"))
+      end
+    end
   end
+end
+
+function _close(r::Rel)
+  for s in keys(r.dct)
+    Base.Libdl.dlclose(pop!(r.dct, s))
+  end
+end
+
+# must load :freetype before :d3dxfreetype2 (or place to current directory)
+const _rel = Rel([
+  :d3d9, :d3dx9, :d3dxconsole, :freetype, :d3dxfreetype2, :dx9adl])
+
+# without parameter _rel
+function relp(md::Symbol, fn::Symbol)
+  c = Base.Libdl.dlsym_e(_rel.dct[md], fn)
+  if c == C_NULL
+    throw(ArgumentError("not found function '$(fn)' in ':$(md)'"))
+  end
+  return c
 end
 
 type RenderD3DItemsState
@@ -51,23 +76,14 @@ type Dx9adl
 end
 
 function connect(resdll::AbstractString=".")
-  if isempty(_rel)
-    # must load :freetype before :d3dxfreetype2 (or place to current directory)
-    sym = [:d3d9, :d3dx9, :d3dxconsole, :freetype, :d3dxfreetype2, :dx9adl]
-    for s in sym
-      _rel[s] = Base.Libdl.dlopen_e(symbol(resdll, "/dll/", string(s)))
-      if _rel[s] == C_NULL
-        throw(ArgumentError("not found module ':$(s)'"))
-      end
-    end
-  end
+  _init(_rel, resdll)
 # ccall(relp(:d3dxconsole, :debugalloc), Void, ()) # needless to call on Julia?
   return Dx9adl()
 end
 
 function close(d9::Dx9adl)
 # ccall(relp(:d3dxconsole, :debugfree), Void, ()) # can not call on Julia cons?
-  relf()
+  _close(_rel)
   return true
 end
 
