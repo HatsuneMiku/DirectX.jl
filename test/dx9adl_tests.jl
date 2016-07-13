@@ -3,7 +3,7 @@
 import DirectX
 
 println("Testing DirectX")
-d9 = DirectX.connect()
+d9 = DirectX.connect("..")
 @test d9 != nothing
 DirectX.initD3DApp(d9)
 @test 0 == DirectX.msgLoop(d9)

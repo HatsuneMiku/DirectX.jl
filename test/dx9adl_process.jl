@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
-# cd ~/.julia/v0.4/DirectX/test
-# julia dx9adl_process.jl
+# cd ~/.julia/v0.4/DirectX
+# julia test/dx9adl_process.jl
 
 import DirectX
 
-println("test dx9adl will quit the process")
+println("test dx9adl with relocated dlls")
 d9 = DirectX.connect()
 DirectX.initD3DApp(d9)
 println(DirectX.msgLoop(d9))
