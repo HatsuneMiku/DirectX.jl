@@ -58,7 +58,9 @@ type RenderD3DItemsState
   mode::UInt32
   hWnd::UInt32
   ppSprite::Ptr{Ptr{Void}} # LPD3DXSPRITE *
-  reserved::UInt32
+  imstring::Ptr{Cchar}
+  imw::UInt32
+  imh::UInt32
   fps::UInt32
   prevTime::UInt32
   nowTime::UInt32
@@ -66,19 +68,31 @@ type RenderD3DItemsState
   height::UInt32
 end
 
+ims = "res\\_string.png"
+
 type Dx9adl
   istat::RenderD3DItemsState
 
-  function Dx9adl()
+  function Dx9adl(resdll::AbstractString)
+    global ims
+    if length(resdll) != 0
+      ims = resdll * "\\" * ims
+    end
     # set mode 0 to skip debugalloc/debugfree
-    return new(RenderD3DItemsState(0, 0, 0, C_NULL, 0, 0, 0, 0, WIDTH, HEIGHT))
+    return new(RenderD3DItemsState(0, 0, 0, C_NULL,
+      pointer(ims), 512, 512, 0, 0, 0, WIDTH, HEIGHT))
+    # OK pointer(ims) # AbstractString to Cchar
+    # OK pointer(ims.data) # Array{UInt8,1} to Cchar
+    # BAD pointer_from_objref(ims)
+    # BAD pointer_from_objref(ims.data)
+    # OK pointer_from_objref(ims.data) + 32 # OK but wrong way
   end
 end
 
 function connect(resdll::AbstractString=".")
   _init(_rel, resdll)
 # ccall(relp(:d3dxconsole, :debugalloc), Void, ()) # needless to call on Julia?
-  return Dx9adl()
+  return Dx9adl(resdll)
 end
 
 function close(d9::Dx9adl)
