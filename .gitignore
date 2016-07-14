@@ -6,4 +6,5 @@ deps/deps.jl
 .DS_Store
 *~
 *.jl.cov
+*.jl.*.cov
 *.jl.mem
