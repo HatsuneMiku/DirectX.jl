@@ -6,7 +6,7 @@
 import DirectX
 
 println("test dx9adl with relocated dlls")
-d9 = DirectX.connect()
+d9 = DirectX.connect("/private/dx9")
 DirectX.initD3DApp(d9)
 println(DirectX.msgLoop(d9))
 DirectX.close(d9)
