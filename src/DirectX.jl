@@ -5,7 +5,8 @@ VERSION >= v"0.4.0-dev+6521" && __precompile__()
 module DirectX
 
 import Base
-using Relocator
+import Relocator
+import Relocator: _mf
 
 export connect, close
 export initD3DApp, msgLoop
@@ -40,7 +41,7 @@ type Dx9adl
   istat::RenderD3DItemsState
 
   function Dx9adl(bp::AbstractString)
-    resdll = searchResDll(bp, res_default[4], true)
+    resdll = Relocator.searchResDll(bp, res_default[4], true)
     ims = replace(resdll * "/" * res_default[3], "/", "\\") # only for Windows
     # set mode 0 to skip debugalloc/debugfree
     return new(bp, resdll, ims, RenderD3DItemsState(0, 0, 0, C_NULL,
@@ -54,14 +55,14 @@ type Dx9adl
 end
 
 function connect(bp::AbstractString="")
-  _init(_rel, _dlls, bp)
+  Relocator._init(_dlls, bp)
 # ccall(_mf(:d3dxconsole, :debugalloc), Void, ()) # needless to call on Julia?
   return Dx9adl(bp)
 end
 
 function close(d9::Dx9adl)
 # ccall(_mf(:d3dxconsole, :debugfree), Void, ()) # can not call on Julia cons?
-  _close(_rel)
+  Relocator._close()
   return true
 end
 
