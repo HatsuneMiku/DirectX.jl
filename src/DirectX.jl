@@ -15,9 +15,6 @@ export initD3DApp, msgLoop
 const _dlls = [:d3d9, :d3dx9, :d3dxconsole, :freetype, :d3dxfreetype2,
   :d3dxglyph, :dx9adl]
 
-const WIDTH = 880
-const HEIGHT = 495
-
 const res_default = (512, 512, "_string.png", "res")
 
 type RenderD3DItemsState
@@ -41,12 +38,12 @@ type Dx9adl
   ims::AbstractString # to hold the pointer placing dynamic char[] (anti GC)
   istat::RenderD3DItemsState
 
-  function Dx9adl(bp::AbstractString)
+  function Dx9adl(w::Int, h::Int, bp::AbstractString)
     resdll = Relocator.searchResDll(bp, res_default[4], true)
     ims = replace(resdll * "/" * res_default[3], "/", "\\") # only for Windows
     # set mode 0 to skip debugalloc/debugfree
     return new(bp, resdll, ims, RenderD3DItemsState(0, 0, 0, C_NULL,
-      pointer(ims), 512, 512, 0, 0, 0, WIDTH, HEIGHT))
+      pointer(ims), 512, 512, 0, 0, 0, w, h))
     # OK pointer(ims) # AbstractString to Cchar
     # OK pointer(ims.data) # Array{UInt8,1} to Cchar
     # BAD pointer_from_objref(ims)
@@ -55,10 +52,10 @@ type Dx9adl
   end
 end
 
-function connect(bp::AbstractString="")
+function connect(w::Int, h::Int, bp::AbstractString="")
   Relocator._init(_dlls, bp)
 # ccall(_mf(:d3dxconsole, :debugalloc), Void, ()) # needless to call on Julia?
-  return Dx9adl(bp)
+  return Dx9adl(w, h, bp)
 end
 
 function close(d9::Dx9adl)
