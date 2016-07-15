@@ -18,13 +18,17 @@ const _dlls = [:d3d9, :d3dx9, :d3dxconsole, :freetype, :d3dxfreetype2,
 const res_default = (512, 512, "_string.png", "res")
 
 type RenderD3DItemsState
+  sys::Ptr{Void}
+  usr::Ptr{Void}
   stat::UInt32
   mode::UInt32
   hWnd::UInt32
+  reserved0::UInt32
   ppSprite::Ptr{Ptr{Void}} # LPD3DXSPRITE *
   imstring::Ptr{Cchar}
   imw::UInt32
   imh::UInt32
+  reserved1::UInt32
   fps::UInt32
   prevTime::UInt32
   nowTime::UInt32
@@ -42,8 +46,8 @@ type Dx9adl
     resdll = Relocator.searchResDll(bp, res_default[4], true)
     ims = replace(resdll * "/" * res_default[3], "/", "\\") # only for Windows
     # set mode 0 to skip debugalloc/debugfree
-    return new(bp, resdll, ims, RenderD3DItemsState(0, 0, 0, C_NULL,
-      pointer(ims), 512, 512, 0, 0, 0, w, h))
+    return new(bp, resdll, ims, RenderD3DItemsState(C_NULL, C_NULL, 0, 0, 0, 0,
+      C_NULL, pointer(ims), 512, 512, 0, 0, 0, 0, w, h))
     # OK pointer(ims) # AbstractString to Cchar
     # OK pointer(ims.data) # Array{UInt8,1} to Cchar
     # BAD pointer_from_objref(ims)
