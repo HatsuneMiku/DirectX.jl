@@ -12,7 +12,8 @@ export connect, close
 export initD3DApp, msgLoop
 
 # must load :freetype before :d3dxfreetype2 (or place to current directory)
-const _dlls = [:d3d9, :d3dx9, :d3dxconsole, :freetype, :d3dxfreetype2, :dx9adl]
+const _dlls = [:d3d9, :d3dx9, :d3dxconsole, :freetype, :d3dxfreetype2,
+  :d3dxglyph, :dx9adl]
 
 const WIDTH = 880
 const HEIGHT = 495
