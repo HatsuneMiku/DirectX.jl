@@ -11,6 +11,12 @@ DirectX.jl is a Julia interface to the DirectX / Direct3D on Windows versions.
 
 The documentation for this package is in the `examples` directory.
 
+
+# requirements
+
+[Relocator](https://github.com/HatsuneMiku/Relocator.jl)
+
+
 # status
 
 [![Build Status](https://travis-ci.org/HatsuneMiku/DirectX.jl.svg?branch=master)](https://travis-ci.org/HatsuneMiku/DirectX.jl)
