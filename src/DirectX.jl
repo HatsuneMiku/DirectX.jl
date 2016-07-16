@@ -18,8 +18,8 @@ const _dlls = [:d3d9, :d3dx9, :d3dxconsole, :freetype, :d3dxfreetype2,
 const res_default = (512, 512, "_string.png", "res")
 
 type RenderD3DItemsState
-  sys::Ptr{Void}
-  usr::Ptr{Void}
+  sysChain::Ptr{Void}
+  usrChain::Ptr{Void}
   stat::UInt32
   mode::UInt32
   hWnd::UInt32
