@@ -17,9 +17,9 @@ const _dlls = [:d3d9, :d3dx9, :d3dxconsole, :freetype, :d3dxfreetype2,
   :d3dxglyph, :dx9adl]
 
 const res_default = (512, 512, "_string.png", "res")
+const face_default = ("mikaP.ttf",)
 
 type VERTEX_GLYPH # in D3DxGlyph.h
-  ppDev::Ptr{Ptr{Void}} # LPDIRECT3DDEVICE9 *
   ppTexture::Ptr{Ptr{Void}} # LPDIRECT3DTEXTURE9 *
   pVtxGlyph::Ptr{Void} # LPDIRECT3DVERTEXBUFFER9
   szGlyph::UInt32 # size_t
@@ -46,7 +46,7 @@ type GLYPH_TBL # in D3DxFT2_types.h
   glyphContours::Ptr{Void} # BOOL (*)(GLYPH_TBL *)
 end
 
-vg = VERTEX_GLYPH(C_NULL, C_NULL, C_NULL, 0) # re-set later
+vg = VERTEX_GLYPH(C_NULL, C_NULL, 0) # re-set later
 gt = GLYPH_TBL(C_NULL, C_NULL, C_NULL, C_NULL, # re-set later
   Float32(6000.), Float32(25.), 0, 0,
   0, 1024, 256, 256, C_NULL, C_NULL, C_NULL, C_NULL, C_NULL, C_NULL)
@@ -58,7 +58,9 @@ type RenderD3DItemsState # in dx9adl.h
   mode::UInt32
   hWnd::UInt32 # HWND
   reserved0::UInt32
+  ppDev::Ptr{Ptr{Void}} # LPDIRECT3DDEVICE9 *
   ppSprite::Ptr{Ptr{Void}} # LPD3DXSPRITE *
+  parent::Ptr{Void}
   imstring::Ptr{Cchar}
   imw::UInt32
   imh::UInt32
@@ -77,11 +79,11 @@ type Dx9adl
   istat::RenderD3DItemsState
 
   function Dx9adl(w::Int, h::Int, bp::AbstractString)
-    resdll = Relocator.searchResDll(bp, res_default[4], true)
-    ims = replace(resdll * "/" * res_default[3], "/", "\\") # only for Windows
+    res = Relocator.searchResDll(bp, res_default[4], true)
+    ims = replace(res * "/" * res_default[3], "/", "\\") # only for Windows
     # set mode 0 to skip debugalloc/debugfree
-    return new(bp, resdll, ims, RenderD3DItemsState(C_NULL, C_NULL, 0, 0, 0, 0,
-      C_NULL, pointer(ims), 512, 512, 0, 0, 0, 0, w, h))
+    return new(bp, res, ims, RenderD3DItemsState(C_NULL, C_NULL, 0, 0, 0, 0,
+      C_NULL, C_NULL, C_NULL, pointer(ims), 512, 512, 0, 0, 0, 0, w, h))
     # OK pointer(ims) # AbstractString to Cchar
     # OK pointer(ims.data) # Array{UInt8,1} to Cchar
     # BAD pointer_from_objref(ims)
@@ -125,18 +127,24 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
         "renderD3DItems %02d %08X\n", ist.fps, ist.nowTime)
       t = (75. - 60. * ((ist.nowTime >> 4) % 256) / 256) * pi / 180;
       gt.pIS = pIS
-      vg.ppDev = _mf(:dx9adl, :g_pDev)
       vg.ppTexture = C_NULL
       ccall(_mf(:dx9adl, :ReleaseNil), UInt8, (Ptr{Ptr{Void}},), &vg.pVtxGlyph)
       vg.szGlyph = 0;
       gt.pVG = pointer_from_objref(vg)
-      gt.facename = pointer("..\\res\\mikaP.ttf".data)
-      gt.utxt = pointer(WCharUTF8.UTF8toWCS("3\u30422\u3041\u3045"))
+      d9 = unsafe_pointer_to_objref(ist.parent)
+      facepath = replace(d9.respath * "/" * face_default[1], "/", "\\")
+      if false
+        ccall(_mf(:d3dxconsole, :debugout), Void, (Ptr{UInt8}, Ptr{Cchar},),
+          "[%s]\n", pointer(facepath.data))
+      end
+      gt.facename = pointer(facepath.data)
+      gt.utxt = pointer(WCharUTF8.UTF8toWCS("3\u30422\u3041\u3045", eos=true))
       gt.ratio = Float32(6000.)
       gt.angle = Float32(25.)
       gt.reserved1 = gt.reserved0 = 0
-      gt.mode = 4
-      gt.td = 1024
+      gt.mode = ((ist.nowTime >> 12) % 2) != 0 ? 4 : 8
+      # gt.mode |= 0x40000000
+      gt.td = 32 * (((ist.nowTime >> 4) % 256) + 1) # about 0.8sec
       gt.tw = 256
       gt.th = 256
       gt.rct = C_NULL
@@ -164,6 +172,7 @@ function initD3DApp(d9::Dx9adl)
   nShow = 1 # 1: SW_SHOWNORMAL or 5: SW_SHOW
   className = "juliaClsDx9ADLtest"
   appName = "juliaAppDx9ADLtest"
+  d9.istat.parent = pointer_from_objref(d9)
   return ccall(_mf(:dx9adl, :InitD3DApp),
     Cint, (UInt32, UInt32, Ptr{UInt8}, Ptr{UInt8}, Ptr{RenderD3DItemsState},
       Ptr{Void}, Ptr{Void}, Ptr{Void},),
