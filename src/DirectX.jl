@@ -83,9 +83,13 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
                  #  getindex(::Ptr{DirectX.RenderD3DItemsState}, ::Int32)
   # ist = unsafe_load(pIS, 1) # ok but curious
   ist = unsafe_pointer_to_objref(pIS) # good
-  if ist.nowTime - ist.prevTime < 5
-    ccall(_mf(:d3dxconsole, :debugout), Void, (Ptr{UInt8}, UInt32, UInt32),
-      "renderD3DItems %02d %08X\n", ist.fps, ist.nowTime)
+  if ist.ppSprite != C_NULL
+    #
+  else
+    if ist.nowTime - ist.prevTime < 5
+      ccall(_mf(:d3dxconsole, :debugout), Void, (Ptr{UInt8}, UInt32, UInt32),
+        "renderD3DItems %02d %08X\n", ist.fps, ist.nowTime)
+    end
   end
   return 1::Cint
 end
