@@ -51,14 +51,20 @@ gt = GLYPH_TBL(C_NULL, C_NULL, C_NULL, C_NULL, # re-set later
   Float32(6000.), Float32(25.), 0, 0,
   0, 1024, 256, 256, C_NULL, C_NULL, C_NULL, C_NULL, C_NULL, C_NULL)
 
-type D3DMatrix
-  aa::Float32, ba::Float32, ca::Float32, da::Float32,
-  ab::Float32, bb::Float32, cb::Float32, db::Float32,
-  ac::Float32, bc::Float32, cc::Float32, dc::Float32,
-  ad::Float32, bd::Float32, cd::Float32, dd::Float32
+immutable D3DMatrix # (fake to copy and read only access) in dx9adl.h
+  aa::Float32; ba::Float32; ca::Float32; da::Float32
+  ab::Float32; bb::Float32; cb::Float32; db::Float32
+  ac::Float32; bc::Float32; cc::Float32; dc::Float32
+  ad::Float32; bd::Float32; cd::Float32; dd::Float32
+
+  function D3DMatrix()
+    return new()
+  end
 end
 
-type D9Foundation
+bitstype 512 D3DMatrixBits
+
+immutable D9Foundation # (fake to copy and read only access) in dx9adl.h
   pD3Dpp::Ptr{Ptr{Void}} # D3DPRESENT_PARAMETERS *
   pD3D::Ptr{Void} # LPDIRECT3D9
   pDev::Ptr{Void} # LPDIRECT3DDEVICE9
@@ -67,10 +73,14 @@ type D9Foundation
   pString::Ptr{Void} # LPDIRECT3DTEXTURE9
   pStringVBuf::Ptr{Void} # LPDIRECT3DVERTEXBUFFER9
   reserved::Ptr{Void} # VOID *
-  matTmp::D3DMatrix
-  matWorld::D3DMatrix
-  matView::D3DMatrix
-  matProj::D3DMatrix
+  matTmp::D3DMatrixBits # fake real byte size of D3DMatrix
+  matWorld::D3DMatrixBits # fake real byte size of D3DMatrix
+  matView::D3DMatrixBits # fake real byte size of D3DMatrix
+  matProj::D3DMatrixBits # fake real byte size of D3DMatrix
+
+  function D9Foundation()
+    return new()
+  end
 end
 
 type RenderD3DItemsState # in dx9adl.h
@@ -104,7 +114,7 @@ type Dx9adl
     ims = replace(res * "/" * res_default[3], "/", "\\") # only for Windows
     # set mode 0 to skip debugalloc/debugfree
     return new(bp, res, ims, RenderD3DItemsState(C_NULL, C_NULL, 0, 0, 0, 0,
-      C_NULL, C_NULL, C_NULL, pointer(ims), 512, 512, 0, 0, 0, 0, w, h))
+      C_NULL, C_NULL, pointer(ims), 512, 512, 0, 0, 0, 0, w, h))
     # OK pointer(ims) # AbstractString to Cchar
     # OK pointer(ims.data) # Array{UInt8,1} to Cchar
     # BAD pointer_from_objref(ims)
@@ -140,8 +150,18 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
                  #  getindex(::Ptr{DirectX.RenderD3DItemsState}, ::Int32)
   # ist = unsafe_load(pIS, 1) # ok but curious
   ist = unsafe_pointer_to_objref(pIS) # good
-  if ist.stat & 0x00008000
-    pSprite = unsafe_pointer_to_objref(ist.d9fnd).pSprite
+  if ist.stat & 0x00008000 != 0
+    # d9f = unsafe_pointer_to_objref(ist.d9fnd) # *BAD* for non Julia structure
+    d9f = D9Foundation() # (fake to copy and read only access)
+    ccall(:memcpy, Ptr{Void}, (Ptr{Void}, Ptr{Void}, UInt32,),
+      pointer_from_objref(d9f), ist.d9fnd, sizeof(d9f))
+    # println("type: ", typeof(d9f))
+    # println("size: ", sizeof(d9f))
+    # ccall(_mf(:d3dxconsole, :debugout), Void, (Ptr{UInt8}, Ptr{Void},),
+    #   "OK0[%08X]\n", d9f.pSprite)
+    pSprite = d9f.pSprite
+    # ccall(_mf(:d3dxconsole, :debugout), Void, (Ptr{UInt8}, Ptr{Void},),
+    #   "OK1[%08X]\n", pSprite)
   else
     if ist.nowTime - ist.prevTime < 5
       ccall(_mf(:d3dxconsole, :debugout), Void, (Ptr{UInt8}, UInt32, UInt32,),
