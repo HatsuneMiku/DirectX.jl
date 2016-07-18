@@ -51,7 +51,7 @@ gt = GLYPH_TBL(C_NULL, C_NULL, C_NULL, C_NULL, # re-set later
   Float32(6000.), Float32(25.), 0, 0,
   0, 1024, 256, 256, C_NULL, C_NULL, C_NULL, C_NULL, C_NULL, C_NULL)
 
-immutable D3DMatrix # (fake to copy and read only access) in dx9adl.h
+type D3DMatrix # (fake to copy and read only access) in dx9adl.h
   aa::Float32; ba::Float32; ca::Float32; da::Float32
   ab::Float32; bb::Float32; cb::Float32; db::Float32
   ac::Float32; bc::Float32; cc::Float32; dc::Float32
@@ -62,9 +62,9 @@ immutable D3DMatrix # (fake to copy and read only access) in dx9adl.h
   end
 end
 
-bitstype 512 D3DMatrixBits
+bitstype (8 * sizeof(D3DMatrix)) D3DMatrixBits
 
-immutable D9Foundation # (fake to copy and read only access) in dx9adl.h
+type D9Foundation # (fake to copy and read only access) in dx9adl.h
   pD3Dpp::Ptr{Ptr{Void}} # D3DPRESENT_PARAMETERS *
   pD3D::Ptr{Void} # LPDIRECT3D9
   pDev::Ptr{Void} # LPDIRECT3DDEVICE9
@@ -107,14 +107,18 @@ type Dx9adl
   basepath::AbstractString # base path
   respath::AbstractString # resource path
   ims::AbstractString # to hold the pointer placing dynamic char[] (anti GC)
+  d9f::D9Foundation # holder
   istat::RenderD3DItemsState
 
   function Dx9adl(w::Int, h::Int, bp::AbstractString)
     res = Relocator.searchResDll(bp, res_default[4], true)
     ims = replace(res * "/" * res_default[3], "/", "\\") # only for Windows
+    d9f = D9Foundation()
     # set mode 0 to skip debugalloc/debugfree
-    return new(bp, res, ims, RenderD3DItemsState(C_NULL, C_NULL, 0, 0, 0, 0,
-      C_NULL, C_NULL, pointer(ims), 512, 512, 0, 0, 0, 0, w, h))
+    return new(bp, res, ims, d9f,
+      RenderD3DItemsState(C_NULL, C_NULL, 0, 0, 0, 0,
+        pointer_from_objref(d9f), C_NULL,
+        pointer(ims), 512, 512, 0, 0, 0, 0, w, h))
     # OK pointer(ims) # AbstractString to Cchar
     # OK pointer(ims.data) # Array{UInt8,1} to Cchar
     # BAD pointer_from_objref(ims)
@@ -151,10 +155,13 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
   # ist = unsafe_load(pIS, 1) # ok but curious
   ist = unsafe_pointer_to_objref(pIS) # good
   if ist.stat & 0x00008000 != 0
-    # d9f = unsafe_pointer_to_objref(ist.d9fnd) # *BAD* for non Julia structure
-    d9f = D9Foundation() # (fake to copy and read only access)
-    ccall(:memcpy, Ptr{Void}, (Ptr{Void}, Ptr{Void}, UInt32,),
-      pointer_from_objref(d9f), ist.d9fnd, sizeof(d9f))
+    if ist.stat & 0x00000001 != 0 # non Julia structure
+      d9f = D9Foundation() # (fake to copy and read only access)
+      ccall(:memcpy, Ptr{Void}, (Ptr{Void}, Ptr{Void}, UInt32,),
+        pointer_from_objref(d9f), ist.d9fnd, sizeof(d9f))
+    else # Julia structure
+      d9f = unsafe_pointer_to_objref(ist.d9fnd) # *BAD* for non Julia structure
+    end
     # println("type: ", typeof(d9f))
     # println("size: ", sizeof(d9f))
     # ccall(_mf(:d3dxconsole, :debugout), Void, (Ptr{UInt8}, Ptr{Void},),
