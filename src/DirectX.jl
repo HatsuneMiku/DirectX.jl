@@ -51,15 +51,36 @@ gt = GLYPH_TBL(C_NULL, C_NULL, C_NULL, C_NULL, # re-set later
   Float32(6000.), Float32(25.), 0, 0,
   0, 1024, 256, 256, C_NULL, C_NULL, C_NULL, C_NULL, C_NULL, C_NULL)
 
+type D3DMatrix
+  aa::Float32, ba::Float32, ca::Float32, da::Float32,
+  ab::Float32, bb::Float32, cb::Float32, db::Float32,
+  ac::Float32, bc::Float32, cc::Float32, dc::Float32,
+  ad::Float32, bd::Float32, cd::Float32, dd::Float32
+end
+
+type D9Foundation
+  pD3Dpp::Ptr{Ptr{Void}} # D3DPRESENT_PARAMETERS *
+  pD3D::Ptr{Void} # LPDIRECT3D9
+  pDev::Ptr{Void} # LPDIRECT3DDEVICE9
+  pSprite::Ptr{Void} # LPD3DXSPRITE
+  pFont::Ptr{Void} # LPD3DXFONT
+  pString::Ptr{Void} # LPDIRECT3DTEXTURE9
+  pStringVBuf::Ptr{Void} # LPDIRECT3DVERTEXBUFFER9
+  reserved::Ptr{Void} # VOID *
+  matTmp::D3DMatrix
+  matWorld::D3DMatrix
+  matView::D3DMatrix
+  matProj::D3DMatrix
+end
+
 type RenderD3DItemsState # in dx9adl.h
   sysChain::Ptr{Void}
   usrChain::Ptr{Void}
-  stat::UInt32 # BOOL
+  stat::UInt32
   mode::UInt32
   hWnd::UInt32 # HWND
   reserved0::UInt32
-  ppDev::Ptr{Ptr{Void}} # LPDIRECT3DDEVICE9 *
-  ppSprite::Ptr{Ptr{Void}} # LPD3DXSPRITE *
+  d9fnd::Ptr{D9Foundation}
   parent::Ptr{Void}
   imstring::Ptr{Cchar}
   imw::UInt32
@@ -119,8 +140,8 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
                  #  getindex(::Ptr{DirectX.RenderD3DItemsState}, ::Int32)
   # ist = unsafe_load(pIS, 1) # ok but curious
   ist = unsafe_pointer_to_objref(pIS) # good
-  if ist.ppSprite != C_NULL
-    #
+  if ist.stat & 0x00008000
+    pSprite = unsafe_pointer_to_objref(ist.d9fnd).pSprite
   else
     if ist.nowTime - ist.prevTime < 5
       ccall(_mf(:d3dxconsole, :debugout), Void, (Ptr{UInt8}, UInt32, UInt32,),
