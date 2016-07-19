@@ -178,9 +178,15 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
     pSprite = d9f.pSprite
     # ccall(_mf(:d3dxconsole, :debugout), Void, (Ptr{UInt8}, Ptr{Void},),
     #   "OK1[%08X]\n", pSprite)
-    ccall(_mf(:dx9adl, :BltString),
-      UInt32, (Ptr{RenderD3DItemsState}, Ptr{Cchar}, UInt32, UInt32, UInt32,),
-      pIS, "BLTSTRING", 2, 192, 32)
+    ppTexture = pointer_from_objref(d9f.pString)
+    ccall(_mf(:dx9adl, :BltTexture), UInt32,
+      (Ptr{RenderD3DItemsState}, UInt32, Ptr{Ptr{Void}},
+      UInt32, UInt32, UInt32, UInt32,
+      Float64, Float64, Float64, Float64, Float64, Float64,),
+      pIS, 0xFFFFFFFF, ppTexture, 0, 0, 512, 512, 0., 0., 0., 10., 10., 1.)
+    ccall(_mf(:dx9adl, :BltString), UInt32,
+      (Ptr{RenderD3DItemsState}, UInt32, Ptr{Cchar}, UInt32, UInt32, UInt32,),
+      pIS, 0xFF808080, "BLTSTRING", 2, 192, 32)
   else
     if ist.nowTime - ist.prevTime < 5
       ccall(_mf(:d3dxconsole, :debugout), Void, (Ptr{UInt8}, UInt32, UInt32,),
@@ -218,27 +224,26 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
     end
     ccall(_mf(:d3dxglyph, :D3DXGLP_DrawGlyph), UInt32, (Ptr{Void},),
       pointer_from_objref(gt))
-    ccall(_mf(:dx9adl, :DrawString),
-      UInt32, (Ptr{RenderD3DItemsState}, Ptr{Cchar}, UInt32,
+    ccall(_mf(:dx9adl, :DrawString), UInt32,
+      (Ptr{RenderD3DItemsState}, UInt32, Ptr{Cchar}, UInt32,
       Float32, Float32, Float32, Float32, Float32, Float32,),
-      pIS, "DRAWSTRING", 3, 0.5, 0.5, 0.1, -3.0, 1.0, -2.0)
+      pIS, 0xFFFFFFFF, "DRAWSTRING", 3, 0.5, 0.5, 0.1, -3.0, 1.0, -2.0)
   end
   return 1::Cint
 end
 
 function initD3DApp(d9::Dx9adl)
-  ccall(_mf(:d3dxconsole, :debugout),
-    Void, (Ptr{UInt8}, Ptr{RenderD3DItemsState},),
+  ccall(_mf(:d3dxconsole, :debugout), Void,
+    (Ptr{UInt8}, Ptr{RenderD3DItemsState},),
     "adl_test &d9.istat = %08X\n", &d9.istat)
-  hInst = ccall((:GetModuleHandleA, :kernel32), stdcall,
-    UInt32, (Ptr{Void},),
+  hInst = ccall((:GetModuleHandleA, :kernel32), stdcall, UInt32, (Ptr{Void},),
     C_NULL)
   nShow = 1 # 1: SW_SHOWNORMAL or 5: SW_SHOW
   className = "juliaClsDx9ADLtest"
   appName = "juliaAppDx9ADLtest"
-  return ccall(_mf(:dx9adl, :InitD3DApp),
-    Cint, (UInt32, UInt32, Ptr{UInt8}, Ptr{UInt8}, Ptr{RenderD3DItemsState},
-      Ptr{Void}, Ptr{Void}, Ptr{Void},),
+  return ccall(_mf(:dx9adl, :InitD3DApp), Cint,
+    (UInt32, UInt32, Ptr{UInt8}, Ptr{UInt8},
+      Ptr{RenderD3DItemsState}, Ptr{Void}, Ptr{Void}, Ptr{Void},),
     hInst, nShow, className, appName, &d9.istat,
     cfunction(initD3DItems, Cint, (Ptr{RenderD3DItemsState},)),
     cfunction(cleanupD3DItems, Cint, (Ptr{RenderD3DItemsState},)),
@@ -249,8 +254,7 @@ function msgLoop(d9::Dx9adl)
   r = -1
   ccall(_mf(:d3dxconsole, :debugout), Void, (Ptr{UInt8},), "in\n")
   try
-    r = ccall(_mf(:dx9adl, :MsgLoop),
-      Cint, (Ptr{RenderD3DItemsState},),
+    r = ccall(_mf(:dx9adl, :MsgLoop), Cint, (Ptr{RenderD3DItemsState},),
       &d9.istat)
   catch err
     ccall(_mf(:d3dxconsole, :debugout), Void, (Ptr{UInt8},), "err\n")
