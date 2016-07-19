@@ -72,11 +72,15 @@ type D9Foundation # (fake to copy and read only access) in dx9adl.h
   pFont::Ptr{Void} # LPD3DXFONT
   pString::Ptr{Void} # LPDIRECT3DTEXTURE9
   pStringVBuf::Ptr{Void} # LPDIRECT3DVERTEXBUFFER9
-  reserved::Ptr{Void} # VOID *
+  reserved0::Ptr{Void} # VOID *
   matTmp::D3DMatrixBits # fake real byte size of D3DMatrix
   matWorld::D3DMatrixBits # fake real byte size of D3DMatrix
   matView::D3DMatrixBits # fake real byte size of D3DMatrix
   matProj::D3DMatrixBits # fake real byte size of D3DMatrix
+  reserved1::Ptr{Void} # VOID *
+  imstring::Ptr{Cchar}
+  imw::UInt32
+  imh::UInt32
 
   function D9Foundation()
     return new()
@@ -92,9 +96,6 @@ type RenderD3DItemsState # in dx9adl.h
   reserved0::UInt32
   d9fnd::Ptr{D9Foundation}
   parent::Ptr{Void}
-  imstring::Ptr{Cchar}
-  imw::UInt32
-  imh::UInt32
   reserved1::UInt32
   fps::UInt32
   prevTime::UInt32
@@ -103,27 +104,30 @@ type RenderD3DItemsState # in dx9adl.h
   height::UInt32
 end
 
+d9f = D9Foundation() # holder (must be out of struct Dx9adl ?)
+
 type Dx9adl
   basepath::AbstractString # base path
   respath::AbstractString # resource path
   ims::AbstractString # to hold the pointer placing dynamic char[] (anti GC)
-  d9f::D9Foundation # holder
-  istat::RenderD3DItemsState
+  istat::RenderD3DItemsState # holder
 
   function Dx9adl(w::Int, h::Int, bp::AbstractString)
     res = Relocator.searchResDll(bp, res_default[4], true)
     ims = replace(res * "/" * res_default[3], "/", "\\") # only for Windows
-    d9f = D9Foundation()
-    # set mode 0 to skip debugalloc/debugfree
-    return new(bp, res, ims, d9f,
-      RenderD3DItemsState(C_NULL, C_NULL, 0, 0, 0, 0,
-        pointer_from_objref(d9f), C_NULL,
-        pointer(ims), 512, 512, 0, 0, 0, 0, w, h))
     # OK pointer(ims) # AbstractString to Cchar
     # OK pointer(ims.data) # Array{UInt8,1} to Cchar
     # BAD pointer_from_objref(ims)
     # BAD pointer_from_objref(ims.data)
     # OK pointer_from_objref(ims.data) + 32 # OK but wrong way
+    d9f.imstring = pointer(ims)
+    d9f.imw = 512
+    d9f.imh = 512
+    # set mode 0 to skip debugalloc/debugfree
+    d = new(bp, res, ims, RenderD3DItemsState(C_NULL, C_NULL, 0, 0, 0, 0,
+      pointer_from_objref(d9f), C_NULL, 0, 0, 0, 0, w, h)) # set parent later
+    d.istat.parent = pointer_from_objref(d)
+    return d
   end
 end
 
@@ -220,7 +224,6 @@ function initD3DApp(d9::Dx9adl)
   nShow = 1 # 1: SW_SHOWNORMAL or 5: SW_SHOW
   className = "juliaClsDx9ADLtest"
   appName = "juliaAppDx9ADLtest"
-  d9.istat.parent = pointer_from_objref(d9)
   return ccall(_mf(:dx9adl, :InitD3DApp),
     Cint, (UInt32, UInt32, Ptr{UInt8}, Ptr{UInt8}, Ptr{RenderD3DItemsState},
       Ptr{Void}, Ptr{Void}, Ptr{Void},),
