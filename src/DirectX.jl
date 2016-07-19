@@ -178,6 +178,9 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
     pSprite = d9f.pSprite
     # ccall(_mf(:d3dxconsole, :debugout), Void, (Ptr{UInt8}, Ptr{Void},),
     #   "OK1[%08X]\n", pSprite)
+    ccall(_mf(:dx9adl, :BltString),
+      UInt32, (Ptr{RenderD3DItemsState}, Ptr{Cchar}, UInt32, UInt32, UInt32,),
+      pIS, "BLTSTRING", 2, 192, 32)
   else
     if ist.nowTime - ist.prevTime < 5
       ccall(_mf(:d3dxconsole, :debugout), Void, (Ptr{UInt8}, UInt32, UInt32,),
@@ -215,6 +218,10 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
     end
     ccall(_mf(:d3dxglyph, :D3DXGLP_DrawGlyph), UInt32, (Ptr{Void},),
       pointer_from_objref(gt))
+    ccall(_mf(:dx9adl, :DrawString),
+      UInt32, (Ptr{RenderD3DItemsState}, Ptr{Cchar}, UInt32,
+      Float32, Float32, Float32, Float32, Float32, Float32,),
+      pIS, "DRAWSTRING", 3, 0.5, 0.5, 0.1, -3.0, 1.0, -2.0)
   end
   return 1::Cint
 end
