@@ -104,13 +104,16 @@ type RenderD3DItemsState # in dx9adl.h
   height::UInt32
 end
 
-d9f = D9Foundation() # holder (must be out of struct Dx9adl ?)
+d9fnd = D9Foundation() # holder (must be out of struct Dx9adl ?)
+istat = RenderD3DItemsState(C_NULL, C_NULL, 0, 0, 0, 0, # re-set later
+  C_NULL, C_NULL, 0, 0, 0, 0, 0, 0)
 
 type Dx9adl
   basepath::AbstractString # base path
   respath::AbstractString # resource path
   ims::AbstractString # to hold the pointer placing dynamic char[] (anti GC)
-  istat::RenderD3DItemsState # holder
+  d9fnd::D9Foundation # reference
+  istat::RenderD3DItemsState # reference
 
   function Dx9adl(w::Int, h::Int, bp::AbstractString)
     res = Relocator.searchResDll(bp, res_default[4], true)
@@ -120,12 +123,14 @@ type Dx9adl
     # BAD pointer_from_objref(ims)
     # BAD pointer_from_objref(ims.data)
     # OK pointer_from_objref(ims.data) + 32 # OK but wrong way
-    d9f.imstring = pointer(ims)
-    d9f.imw = 512
-    d9f.imh = 512
+    d9fnd.imstring = pointer(ims)
+    d9fnd.imw = 512
+    d9fnd.imh = 512
+    istat.d9fnd = pointer_from_objref(d9fnd)
+    istat.width = w
+    istat.height = h
     # set mode 0 to skip debugalloc/debugfree
-    d = new(bp, res, ims, RenderD3DItemsState(C_NULL, C_NULL, 0, 0, 0, 0,
-      pointer_from_objref(d9f), C_NULL, 0, 0, 0, 0, w, h)) # set parent later
+    d = new(bp, res, ims, d9fnd, istat) # set parent later
     d.istat.parent = pointer_from_objref(d)
     return d
   end
