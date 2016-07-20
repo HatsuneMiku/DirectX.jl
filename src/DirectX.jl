@@ -181,12 +181,13 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
     ppTexture = pointer_from_objref(d9f.pString)
     ccall(_mf(:dx9adl, :BltTexture), UInt32,
       (Ptr{RenderD3DItemsState}, UInt32, Ptr{Ptr{Void}},
-      UInt32, UInt32, UInt32, UInt32,
-      Float64, Float64, Float64, Float64, Float64, Float64,),
+        UInt32, UInt32, UInt32, UInt32,
+        Float64, Float64, Float64, Float64, Float64, Float64,),
       pIS, 0xFFFFFFFF, ppTexture, 0, 0, 512, 512, 0., 0., 0., 10., 10., 1.)
     ccall(_mf(:dx9adl, :BltString), UInt32,
-      (Ptr{RenderD3DItemsState}, UInt32, Ptr{Cchar}, UInt32, UInt32, UInt32,),
-      pIS, 0xFF808080, "BLTSTRING", 2, 192, 32)
+      (Ptr{RenderD3DItemsState}, UInt32, Ptr{Cchar}, UInt32,
+        UInt32, UInt32, Float32,),
+      pIS, 0xFF808080, "BLTSTRING", 2, 192, 32, 0.1)
   else
     if ist.nowTime - ist.prevTime < 5
       ccall(_mf(:d3dxconsole, :debugout), Void, (Ptr{UInt8}, UInt32, UInt32,),
@@ -226,7 +227,7 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
       pointer_from_objref(gt))
     ccall(_mf(:dx9adl, :DrawString), UInt32,
       (Ptr{RenderD3DItemsState}, UInt32, Ptr{Cchar}, UInt32,
-      Float32, Float32, Float32, Float32, Float32, Float32,),
+        Float32, Float32, Float32, Float32, Float32, Float32,),
       pIS, 0xFFFFFFFF, "DRAWSTRING", 3, 0.5, 0.5, 0.1, -3.0, 1.0, -2.0)
   end
   return 1::Cint
