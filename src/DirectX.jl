@@ -4,17 +4,13 @@
 VERSION >= v"0.4.0-dev+6521" && __precompile__()
 module DirectX
 
-import Base
+include("lib_fnc_defs.jl") # import DLL_Loader with import Relocator: _mf
+
 import Relocator
-import Relocator: _mf
 import WCharUTF8
 
 export connect, close
 export initD3DApp, msgLoop
-
-# must load :freetype before :d3dxfreetype2 (or place to current directory)
-const _dlls = [:d3d9, :d3dx9, :d3dxconsole, :freetype, :d3dxfreetype2,
-  :d3dxglyph, :dx9adl]
 
 const res_default = (512, 512, "_string.png", "res")
 const face_default = ("mikaP.ttf",)
@@ -126,7 +122,7 @@ type Dx9adl
     d9fnd.imstring = pointer(ims)
     d9fnd.imw = 512
     d9fnd.imh = 512
-    istat.d9fnd = pointer_from_objref(d9fnd)
+    istat.d9fnd = pointer_from_objref(d9fnd) # or set C_NULL
     istat.width = w
     istat.height = h
     # set mode 0 to skip debugalloc/debugfree
@@ -137,24 +133,24 @@ type Dx9adl
 end
 
 function connect(w::Int, h::Int, bp::AbstractString="")
-  Relocator._init(_dlls, bp)
-# ccall(_mf(:d3dxconsole, :debugalloc), Void, ()) # needless to call on Julia?
+  DLL_Loader.load(bp)
+# debugalloc() # needless to call on Julia console ?
   return Dx9adl(w, h, bp)
 end
 
 function close(d9::Dx9adl)
-# ccall(_mf(:d3dxconsole, :debugfree), Void, ()) # can not call on Julia cons?
-  Relocator._close()
+# debugfree() # can not call on Julia console ?
+  DLL_Loader.unload()
   return true
 end
 
 function initD3DItems(pIS::Ptr{RenderD3DItemsState})
-  ccall(_mf(:d3dxconsole, :debugout), Void, (Ptr{UInt8},), "initD3DItems\n")
+  debugout("initD3DItems\n")
   return 1::Cint
 end
 
 function cleanupD3DItems(pIS::Ptr{RenderD3DItemsState})
-  ccall(_mf(:d3dxconsole, :debugout), Void, (Ptr{UInt8},), "cleanupD3DItems\n")
+  debugout("cleanupD3DItems\n")
   return 1::Cint
 end
 
@@ -166,44 +162,31 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
   if ist.stat & 0x00008000 != 0
     if ist.stat & 0x00000001 != 0 # non Julia structure
       d9f = D9Foundation() # (fake to copy and read only access)
-      ccall(:memcpy, Ptr{Void}, (Ptr{Void}, Ptr{Void}, UInt32,),
-        pointer_from_objref(d9f), ist.d9fnd, sizeof(d9f))
+      memcpy(pointer_from_objref(d9f), ist.d9fnd, sizeof(d9f))
     else # Julia structure
       d9f = unsafe_pointer_to_objref(ist.d9fnd) # *BAD* for non Julia structure
     end
     # println("type: ", typeof(d9f))
     # println("size: ", sizeof(d9f))
-    # ccall(_mf(:d3dxconsole, :debugout), Void, (Ptr{UInt8}, Ptr{Void},),
-    #   "OK0[%08X]\n", d9f.pSprite)
+    # debugout("OK0[%08X]\n", d9f.pSprite)
     pSprite = d9f.pSprite
-    # ccall(_mf(:d3dxconsole, :debugout), Void, (Ptr{UInt8}, Ptr{Void},),
-    #   "OK1[%08X]\n", pSprite)
+    # debugout("OK1[%08X]\n", pSprite)
     ppTexture = pointer_from_objref(d9f.pString)
-    ccall(_mf(:dx9adl, :BltTexture), UInt32,
-      (Ptr{RenderD3DItemsState}, UInt32, Ptr{Ptr{Void}},
-        UInt32, UInt32, UInt32, UInt32,
-        Float64, Float64, Float64, Float64, Float64, Float64,),
-      pIS, 0xFFFFFFFF, ppTexture, 0, 0, 512, 512, 0., 0., 0., 10., 10., 1.)
-    ccall(_mf(:dx9adl, :BltString), UInt32,
-      (Ptr{RenderD3DItemsState}, UInt32, Ptr{Cchar}, UInt32,
-        UInt32, UInt32, Float32,),
-      pIS, 0xFF808080, "BLTSTRING", 2, 192, 32, 0.1)
+    BltTexture(pIS, 0xFFFFFFFF, ppTexture, 0, 0, 512, 512,
+      0., 0., 0., 10., 10., 1.)
+    BltString(pIS, 0xFF808080, "BLTSTRING", 2, 192, 32, 0.1)
   else
     if ist.nowTime - ist.prevTime < 5
-      ccall(_mf(:d3dxconsole, :debugout), Void, (Ptr{UInt8}, UInt32, UInt32,),
-        "renderD3DItems %02d %08X\n", ist.fps, ist.nowTime)
+      debugout("renderD3DItems %02d %08X\n", ist.fps, ist.nowTime)
       t = (75. - 60. * ((ist.nowTime >> 4) % 256) / 256) * pi / 180;
       gt.pIS = pIS
       vg.ppTexture = C_NULL
-      ccall(_mf(:dx9adl, :ReleaseNil), UInt8, (Ptr{Ptr{Void}},), &vg.pVtxGlyph)
+      ReleaseNil(pointer_from_objref(vg.pVtxGlyph))
       vg.szGlyph = 0;
       gt.pVG = pointer_from_objref(vg)
       d9 = unsafe_pointer_to_objref(ist.parent)
       facepath = replace(d9.respath * "/" * face_default[1], "/", "\\")
-      if false
-        ccall(_mf(:d3dxconsole, :debugout), Void, (Ptr{UInt8}, Ptr{Cchar},),
-          "[%s]\n", pointer(facepath.data))
-      end
+      # debugout("[%s]\n", pointer(facepath.data))
       gt.facename = pointer(facepath.data)
       gt.utxt = pointer(WCharUTF8.UTF8toWCS("3\u30422\u3041\u3045", eos=true))
       gt.ratio = Float32(6000.)
@@ -220,32 +203,22 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
       gt.vtx = C_NULL
       gt.funcs = C_NULL
       gt.glyphContours = _mf(:d3dxglyph, :D3DXGLP_GlyphContours)
-      ccall(_mf(:d3dxfreetype2, :D3DXFT2_GlyphOutline), UInt32, (Ptr{Void},),
-        pointer_from_objref(gt))
+      D3DXFT2_GlyphOutline(pointer_from_objref(gt))
     end
-    ccall(_mf(:d3dxglyph, :D3DXGLP_DrawGlyph), UInt32, (Ptr{Void},),
-      pointer_from_objref(gt))
-    ccall(_mf(:dx9adl, :DrawString), UInt32,
-      (Ptr{RenderD3DItemsState}, UInt32, Ptr{Cchar}, UInt32,
-        Float32, Float32, Float32, Float32, Float32, Float32,),
-      pIS, 0xFFFFFFFF, "DRAWSTRING", 3, 0.5, 0.5, 0.1, -3.0, 1.0, -2.0)
+    D3DXGLP_DrawGlyph(pointer_from_objref(gt))
+    DrawString(pIS, 0xFFFFFFFF, "DRAWSTRING", 3, 0.5, 0.5, 0.1, -3., 1., -2.)
   end
   return 1::Cint
 end
 
 function initD3DApp(d9::Dx9adl)
-  ccall(_mf(:d3dxconsole, :debugout), Void,
-    (Ptr{UInt8}, Ptr{RenderD3DItemsState},),
-    "adl_test &d9.istat = %08X\n", &d9.istat)
-  hInst = ccall((:GetModuleHandleA, :kernel32), stdcall, UInt32, (Ptr{Void},),
-    C_NULL)
+  debugout("adl_test &d9.istat = %08X\n", pointer_from_objref(d9.istat))
+  hInst = GetModuleHandleA(C_NULL)
   nShow = 1 # 1: SW_SHOWNORMAL or 5: SW_SHOW
   className = "juliaClsDx9ADLtest"
   appName = "juliaAppDx9ADLtest"
-  return ccall(_mf(:dx9adl, :InitD3DApp), Cint,
-    (UInt32, UInt32, Ptr{UInt8}, Ptr{UInt8},
-      Ptr{RenderD3DItemsState}, Ptr{Void}, Ptr{Void}, Ptr{Void},),
-    hInst, nShow, className, appName, &d9.istat,
+  return InitD3DApp(
+    hInst, nShow, className, appName, pointer_from_objref(d9.istat),
     cfunction(initD3DItems, Cint, (Ptr{RenderD3DItemsState},)),
     cfunction(cleanupD3DItems, Cint, (Ptr{RenderD3DItemsState},)),
     cfunction(renderD3DItems, Cint, (Ptr{RenderD3DItemsState},)))
@@ -253,15 +226,14 @@ end
 
 function msgLoop(d9::Dx9adl)
   r = -1
-  ccall(_mf(:d3dxconsole, :debugout), Void, (Ptr{UInt8},), "in\n")
+  debugout("in\n")
   try
-    r = ccall(_mf(:dx9adl, :MsgLoop), Cint, (Ptr{RenderD3DItemsState},),
-      &d9.istat)
+    r = MsgLoop(pointer_from_objref(d9.istat))
   catch err
-    ccall(_mf(:d3dxconsole, :debugout), Void, (Ptr{UInt8},), "err\n")
+    debugout("err\n")
     println(err)
   finally
-    ccall(_mf(:d3dxconsole, :debugout), Void, (Ptr{UInt8},), "out\n")
+    debugout("out\n")
   end
   return r
 end
