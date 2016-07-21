@@ -145,12 +145,14 @@ function close(d9::Dx9adl)
 end
 
 function initD3DItems(pIS::Ptr{RenderD3DItemsState})
-  debugout("initD3DItems\n")
+  ist = unsafe_pointer_to_objref(pIS)
+  debugout("initD3DItems: %08X\n", ist.stat)
   return 1::Cint
 end
 
 function cleanupD3DItems(pIS::Ptr{RenderD3DItemsState})
-  debugout("cleanupD3DItems\n")
+  ist = unsafe_pointer_to_objref(pIS)
+  debugout("cleanupD3DItems: %08X\n", ist.stat)
   return 1::Cint
 end
 
