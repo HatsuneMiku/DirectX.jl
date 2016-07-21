@@ -153,6 +153,8 @@ end
 function cleanupD3DItems(pIS::Ptr{RenderD3DItemsState})
   ist = unsafe_pointer_to_objref(pIS)
   debugout("cleanupD3DItems: %08X\n", ist.stat)
+  # ReleaseNil(pointer_from_objref(vg.pVtxGlyph))
+  ReleaseNil(pointer_from_objref(vg) + sizeof(Ptr{Ptr{Void}}))
   return 1::Cint
 end
 
@@ -183,7 +185,11 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
       t = (75. - 60. * ((ist.nowTime >> 4) % 256) / 256) * pi / 180;
       gt.pIS = pIS
       vg.ppTexture = C_NULL
-      ReleaseNil(pointer_from_objref(vg.pVtxGlyph))
+      # debugout("<%08X><%08X>\n",
+      #   pointer_from_objref(vg.pVtxGlyph),
+      #   pointer_from_objref(vg) + sizeof(Ptr{Ptr{Void}}))
+      # ReleaseNil(pointer_from_objref(vg.pVtxGlyph))
+      ReleaseNil(pointer_from_objref(vg) + sizeof(Ptr{Ptr{Void}}))
       vg.szGlyph = 0;
       gt.pVG = pointer_from_objref(vg)
       d9 = unsafe_pointer_to_objref(ist.parent)
