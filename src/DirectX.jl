@@ -153,7 +153,7 @@ end
 function cleanupD3DItems(pIS::Ptr{RenderD3DItemsState})
   ist = unsafe_pointer_to_objref(pIS)
   debugout("cleanupD3DItems: %08X\n", ist.stat)
-  # ReleaseNil(pointer_from_objref(vg.pVtxGlyph))
+  # ReleaseNil(pointer_from_objref(vg.pVtxGlyph)) # *BAD*
   ReleaseNil(pointer_from_objref(vg) + sizeof(Ptr{Ptr{Void}}))
   return 1::Cint
 end
@@ -180,15 +180,17 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
       0., 0., 0., 10., 10., 1.)
     BltString(pIS, 0xFF808080, "BLTSTRING", 2, 192, 32, 0.1)
   else
-    if ist.nowTime - ist.prevTime < 5
-      debugout("renderD3DItems %02d %08X\n", ist.fps, ist.nowTime)
+    if ist.nowTime - ist.prevTime <= 1000
+      if ist.nowTime - ist.prevTime <= 5
+        debugout("renderD3DItems %02d %08X\n", ist.fps, ist.nowTime)
+      end
       t = (75. - 60. * ((ist.nowTime >> 4) % 256) / 256) * pi / 180;
       gt.pIS = pIS
       vg.ppTexture = C_NULL
       # debugout("<%08X><%08X>\n",
       #   pointer_from_objref(vg.pVtxGlyph),
       #   pointer_from_objref(vg) + sizeof(Ptr{Ptr{Void}}))
-      # ReleaseNil(pointer_from_objref(vg.pVtxGlyph))
+      # ReleaseNil(pointer_from_objref(vg.pVtxGlyph)) # *BAD*
       ReleaseNil(pointer_from_objref(vg) + sizeof(Ptr{Ptr{Void}}))
       vg.szGlyph = 0;
       gt.pVG = pointer_from_objref(vg)
@@ -196,7 +198,9 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
       facepath = replace(d9.respath * "/" * face_default[1], "/", "\\")
       # debugout("[%s]\n", pointer(facepath.data))
       gt.facename = pointer(facepath.data)
-      gt.utxt = pointer(WCharUTF8.UTF8toWCS("3\u30422\u3041\u3045", eos=true))
+      nt = ist.nowTime & 0x0000FFFF
+      u8 = @sprintf "%02d%c%04X%s" ist.fps 'ぁ' nt "\u3047\u3046" # UTF-8
+      gt.utxt = pointer(WCharUTF8.UTF8toWCS(u8, eos=true))
       gt.ratio = Float32(6000.)
       gt.angle = Float32(25.)
       gt.reserved1 = gt.reserved0 = 0
