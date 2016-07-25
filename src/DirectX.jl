@@ -39,7 +39,7 @@ function as_array_to(m::D3DMatrix, a::Array{Float32,2}) # 4x4 Array{Float32,2}
   m.ab = a[1, 2]; m.bb = a[2, 2]; m.cb = a[3, 2]; m.db = a[4, 2]
   m.ac = a[1, 3]; m.bc = a[2, 3]; m.cc = a[3, 3]; m.dc = a[4, 3]
   m.ad = a[1, 4]; m.bd = a[2, 4]; m.cd = a[3, 4]; m.dd = a[4, 4]
-  1
+  m
 end
 
 type Q_D3DMatrix # in dx9adl.h
@@ -87,8 +87,8 @@ end
 m_tmp = D3DMatrix()
 m_rotation = D3DMatrix(
   1.0,         0.,         0.,  0.,
-   0.,  1./1.4142, -1./1.4142,  0.,
    0.,  1./1.4142,  1./1.4142,  0.,
+   0., -1./1.4142,  1./1.4142,  0.,
    0.,         0.,         0., 1.0)
 m_scale = D3DMatrix(
   1.5,  0.,  0.,  0.,
@@ -96,10 +96,10 @@ m_scale = D3DMatrix(
    0.,  0., 1.5,  0.,
    0.,  0.,  0., 1.0)
 m_transport = D3DMatrix(
-  1.0,  0.,  0., -4.,
-   0., 1.0,  0., -1.,
-   0.,  0., 1.0, -2.,
-   0.,  0.,  0., 1.0)
+  1.0,  0.,  0.,  0.,
+   0., 1.0,  0.,  0.,
+   0.,  0., 1.0,  0.,
+  -4., -1., -2., 1.0)
 qqm = QQMatrix(C_NULL, C_NULL, C_NULL, C_NULL) # re-set later
 vg = VERTEX_GLYPH(C_NULL, C_NULL, C_NULL, 0) # re-set later
 gt = GLYPH_TBL(C_NULL, C_NULL, C_NULL, C_NULL, # re-set later
@@ -260,11 +260,10 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
       gt.glyphBmp = C_NULL
       m_rotation.cc = m_rotation.bb = cos(t)
       m_rotation.bc = - (m_rotation.cb = sin(t))
-      # m0 = as_array_from(m_tmp)
-      m1 = as_array_from(m_rotation)
-      m2 = as_array_from(m_scale)
-      m3 = as_array_from(m_transport)
-      as_array_to(m_tmp, m1 * m2 * m3) # not set to m0
+      mr = as_array_from(m_rotation)
+      ms = as_array_from(m_scale)
+      mt = as_array_from(m_transport)
+      as_array_to(m_tmp, mt * ms * mr) # transposed matrix reversed multiply
       gt.matrix = qqm.tmp
       gt.vtx = C_NULL
       gt.funcs = C_NULL
