@@ -20,13 +20,27 @@ type D3DMatrix # (fake to copy and read only access) in dx9adl.h
   ab::Float32; bb::Float32; cb::Float32; db::Float32
   ac::Float32; bc::Float32; cc::Float32; dc::Float32
   ad::Float32; bd::Float32; cd::Float32; dd::Float32
-
-  function D3DMatrix()
-    return new(1., 0., 0., 0., 0., 1., 0., 0., 0., 0., 1., 0., 0., 0., 0., 1.)
-  end
 end
 
 # bitstype (8 * sizeof(D3DMatrix)) D3DMatrixBits # fake real byte size
+
+D3DMatrix() = D3DMatrix(
+  1., 0., 0., 0.,
+  0., 1., 0., 0.,
+  0., 0., 1., 0.,
+  0., 0., 0., 1.)
+
+function as_array_from(m::D3DMatrix)
+  pointer_to_array(convert(Ptr{Float32}, pointer_from_objref(m)), (4, 4))
+end
+
+function as_array_to(m::D3DMatrix, a::Array{Float32,2}) # 4x4 Array{Float32,2}
+  m.aa = a[1, 1]; m.ba = a[2, 1]; m.ca = a[3, 1]; m.da = a[4, 1]
+  m.ab = a[1, 2]; m.bb = a[2, 2]; m.cb = a[3, 2]; m.db = a[4, 2]
+  m.ac = a[1, 3]; m.bc = a[2, 3]; m.cc = a[3, 3]; m.dc = a[4, 3]
+  m.ad = a[1, 4]; m.bd = a[2, 4]; m.cd = a[3, 4]; m.dd = a[4, 4]
+  1
+end
 
 type Q_D3DMatrix # in dx9adl.h
   tmp::Ptr{Void} # D3DMATRIX *
@@ -70,6 +84,23 @@ type GLYPH_TBL # in D3DxFT2_types.h
   glyphContours::Ptr{Void} # BOOL (*)(GLYPH_TBL *)
 end
 
+m_tmp = D3DMatrix()
+m_rotation = D3DMatrix(
+  1.0,         0.,         0.,  0.,
+   0.,  1./1.4142, -1./1.4142,  0.,
+   0.,  1./1.4142,  1./1.4142,  0.,
+   0.,         0.,         0., 1.0)
+m_scale = D3DMatrix(
+  1.5,  0.,  0.,  0.,
+   0., 1.5,  0.,  0.,
+   0.,  0., 1.5,  0.,
+   0.,  0.,  0., 1.0)
+m_transport = D3DMatrix(
+  1.0,  0.,  0., -4.,
+   0., 1.0,  0., -1.,
+   0.,  0., 1.0, -2.,
+   0.,  0.,  0., 1.0)
+qqm = QQMatrix(C_NULL, C_NULL, C_NULL, C_NULL) # re-set later
 vg = VERTEX_GLYPH(C_NULL, C_NULL, C_NULL, 0) # re-set later
 gt = GLYPH_TBL(C_NULL, C_NULL, C_NULL, C_NULL, # re-set later
   Float32(6000.), Float32(25.), 0, 0,
@@ -197,7 +228,11 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
       end
       t = (75. - 60. * ((ist.nowTime >> 4) % 256) / 256) * pi / 180;
       gt.pIS = pIS
-      vg.pQQM = C_NULL
+      qqm.tmp = pointer_from_objref(m_tmp)
+      qqm.rotation = pointer_from_objref(m_rotation)
+      qqm.scale = pointer_from_objref(m_scale)
+      qqm.transport = pointer_from_objref(m_transport)
+      vg.pQQM = pointer_from_objref(qqm)
       vg.ppTexture = C_NULL
       # debugout("<%08X><%08X>\n",
       #   pointer_from_objref(vg.pVtxGlyph),
@@ -223,7 +258,14 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
       gt.th = 256
       gt.rct = C_NULL
       gt.glyphBmp = C_NULL
-      gt.matrix = C_NULL
+      m_rotation.cc = m_rotation.bb = cos(t)
+      m_rotation.bc = - (m_rotation.cb = sin(t))
+      # m0 = as_array_from(m_tmp)
+      m1 = as_array_from(m_rotation)
+      m2 = as_array_from(m_scale)
+      m3 = as_array_from(m_transport)
+      as_array_to(m_tmp, m1 * m2 * m3) # not set to m0
+      gt.matrix = qqm.tmp
       gt.vtx = C_NULL
       gt.funcs = C_NULL
       gt.glyphContours = _mf(:d3dxglyph, :D3DXGLP_GlyphContours)
