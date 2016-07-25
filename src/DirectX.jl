@@ -15,7 +15,35 @@ export initD3DApp, msgLoop
 const res_default = (512, 512, "_string.png", "res")
 const face_default = ("mikaP.ttf",)
 
+type D3DMatrix # (fake to copy and read only access) in dx9adl.h
+  aa::Float32; ba::Float32; ca::Float32; da::Float32
+  ab::Float32; bb::Float32; cb::Float32; db::Float32
+  ac::Float32; bc::Float32; cc::Float32; dc::Float32
+  ad::Float32; bd::Float32; cd::Float32; dd::Float32
+
+  function D3DMatrix()
+    return new(1., 0., 0., 0., 0., 1., 0., 0., 0., 0., 1., 0., 0., 0., 0., 1.)
+  end
+end
+
+# bitstype (8 * sizeof(D3DMatrix)) D3DMatrixBits # fake real byte size
+
+type Q_D3DMatrix # in dx9adl.h
+  tmp::Ptr{Void} # D3DMATRIX *
+  world::Ptr{Void} # D3DMATRIX *
+  view::Ptr{Void} # D3DMATRIX *
+  proj::Ptr{Void} # D3DMATRIX *
+end
+
+type QQMatrix # in quotanion.h
+  tmp::Ptr{Void} # QUOTANIONIC_MATRIX *
+  rotation::Ptr{Void} # QUOTANIONIC_MATRIX *
+  scale::Ptr{Void} # QUOTANIONIC_MATRIX *
+  transport::Ptr{Void} # QUOTANIONIC_MATRIX *
+end
+
 type VERTEX_GLYPH # in D3DxGlyph.h
+  pQQM::Ptr{Void} # QQMATRIX * # in quotanion.h
   ppTexture::Ptr{Ptr{Void}} # LPDIRECT3DTEXTURE9 *
   pVtxGlyph::Ptr{Void} # LPDIRECT3DVERTEXBUFFER9
   szGlyph::UInt32 # size_t
@@ -42,23 +70,10 @@ type GLYPH_TBL # in D3DxFT2_types.h
   glyphContours::Ptr{Void} # BOOL (*)(GLYPH_TBL *)
 end
 
-vg = VERTEX_GLYPH(C_NULL, C_NULL, 0) # re-set later
+vg = VERTEX_GLYPH(C_NULL, C_NULL, C_NULL, 0) # re-set later
 gt = GLYPH_TBL(C_NULL, C_NULL, C_NULL, C_NULL, # re-set later
   Float32(6000.), Float32(25.), 0, 0,
   0, 1024, 256, 256, C_NULL, C_NULL, C_NULL, C_NULL, C_NULL, C_NULL)
-
-type D3DMatrix # (fake to copy and read only access) in dx9adl.h
-  aa::Float32; ba::Float32; ca::Float32; da::Float32
-  ab::Float32; bb::Float32; cb::Float32; db::Float32
-  ac::Float32; bc::Float32; cc::Float32; dc::Float32
-  ad::Float32; bd::Float32; cd::Float32; dd::Float32
-
-  function D3DMatrix()
-    return new()
-  end
-end
-
-bitstype (8 * sizeof(D3DMatrix)) D3DMatrixBits
 
 type D9Foundation # (fake to copy and read only access) in dx9adl.h
   pD3Dpp::Ptr{Ptr{Void}} # D3DPRESENT_PARAMETERS *
@@ -68,12 +83,8 @@ type D9Foundation # (fake to copy and read only access) in dx9adl.h
   pFont::Ptr{Void} # LPD3DXFONT
   pString::Ptr{Void} # LPDIRECT3DTEXTURE9
   pStringVBuf::Ptr{Void} # LPDIRECT3DVERTEXBUFFER9
-  reserved0::Ptr{Void} # VOID *
-  matTmp::D3DMatrixBits # fake real byte size of D3DMatrix
-  matWorld::D3DMatrixBits # fake real byte size of D3DMatrix
-  matView::D3DMatrixBits # fake real byte size of D3DMatrix
-  matProj::D3DMatrixBits # fake real byte size of D3DMatrix
-  reserved1::Ptr{Void} # VOID *
+  reserved::Ptr{Void} # VOID *
+  pMenv::Ptr{Void} # Q_D3DMATRIX * # in dx9adl.h
   imstring::Ptr{Cchar}
   imw::UInt32
   imh::UInt32
@@ -186,12 +197,13 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
       end
       t = (75. - 60. * ((ist.nowTime >> 4) % 256) / 256) * pi / 180;
       gt.pIS = pIS
+      vg.pQQM = C_NULL
       vg.ppTexture = C_NULL
       # debugout("<%08X><%08X>\n",
       #   pointer_from_objref(vg.pVtxGlyph),
-      #   pointer_from_objref(vg) + sizeof(Ptr{Ptr{Void}}))
+      #   pointer_from_objref(vg) + 2 * sizeof(Ptr{Void}))
       # ReleaseNil(pointer_from_objref(vg.pVtxGlyph)) # *BAD*
-      ReleaseNil(pointer_from_objref(vg) + sizeof(Ptr{Ptr{Void}}))
+      ReleaseNil(pointer_from_objref(vg) + 2 * sizeof(Ptr{Void}))
       vg.szGlyph = 0;
       gt.pVG = pointer_from_objref(vg)
       d9 = unsafe_pointer_to_objref(ist.parent)
