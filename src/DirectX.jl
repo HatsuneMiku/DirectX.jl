@@ -106,6 +106,43 @@ gt = GLYPH_TBL(C_NULL, C_NULL, C_NULL, C_NULL, # re-set later
   Float32(6000.), Float32(25.), 0, 0,
   0, 1024, 256, 256, C_NULL, C_NULL, C_NULL, C_NULL, C_NULL, C_NULL)
 
+type D3DVector
+  x::Float32; y::Float32; z::Float32
+end
+
+bitstype (8 * sizeof(D3DVector)) D3DVectorBits # fake real byte size
+
+type D9F_Vecs # (construction values of matrices) in dx9adl.h
+  eyePt::D3DVectorBits
+  reserved0::UInt32
+  lookatPt::D3DVectorBits
+  reserved1::UInt32
+  upVec::D3DVectorBits
+  reserved2::UInt32
+  fovY::Float32; aspect::Float32; zn::Float32; zf::Float32
+
+#  function D9F_Vecs(
+#    eyePt::D3DVector, reserved0::UInt32,
+#    lookatPt::D3DVector, reserved1::UInt32,
+#    upVec::D3DVector, reserved2::UInt32,
+#    fovY::Float32, aspect::Float32, zn::Float32, zf::Float32
+#  )
+  function D9F_Vecs(eyePt, reserved0, lookatPt, reserved1, upVec, reserved2,
+    fovY, aspect, zn, zf)
+    return new(
+      pointer_to_array(convert(Ptr{D3DVectorBits}, pointer_from_objref(
+        eyePt)), 1)[],
+      reserved0,
+      pointer_to_array(convert(Ptr{D3DVectorBits}, pointer_from_objref(
+        lookatPt)), 1)[],
+      reserved1,
+      pointer_to_array(convert(Ptr{D3DVectorBits}, pointer_from_objref(
+        upVec)), 1)[],
+      reserved2,
+      fovY, aspect, zn, zf)
+  end
+end
+
 type D9Foundation # (fake to copy and read only access) in dx9adl.h
   pD3Dpp::Ptr{Ptr{Void}} # D3DPRESENT_PARAMETERS *
   pD3D::Ptr{Void} # LPDIRECT3D9
@@ -114,8 +151,8 @@ type D9Foundation # (fake to copy and read only access) in dx9adl.h
   pFont::Ptr{Void} # LPD3DXFONT
   pString::Ptr{Void} # LPDIRECT3DTEXTURE9
   pStringVBuf::Ptr{Void} # LPDIRECT3DVERTEXBUFFER9
-  reserved::Ptr{Void} # VOID *
   pMenv::Ptr{Void} # Q_D3DMATRIX * # in dx9adl.h
+  pVecs::Ptr{Void} # D9F_VECS * # in dx9adl.h
   imstring::Ptr{Cchar}
   imw::UInt32
   imh::UInt32
@@ -142,6 +179,16 @@ type RenderD3DItemsState # in dx9adl.h
   height::UInt32
 end
 
+m_envtmp = D3DMatrix()
+m_world = D3DMatrix()
+m_view = D3DMatrix()
+m_proj = D3DMatrix()
+menv = Q_D3DMatrix(C_NULL, C_NULL, C_NULL, C_NULL) # re-set later
+vecs = D9F_Vecs(
+  D3DVector(5., 5., -5.), 0,
+  D3DVector(0., 0., 0.), 0,
+  D3DVector(0., 1., 0.), 0,
+  3./4., 1., 1., 100.)
 d9fnd = D9Foundation() # holder (must be out of struct Dx9adl ?)
 istat = RenderD3DItemsState(C_NULL, C_NULL, 0, 0, 0, 0, # re-set later
   C_NULL, C_NULL, 0, 0, 0, 0, 0, 0)
@@ -164,6 +211,12 @@ type Dx9adl
     d9fnd.imstring = pointer(ims)
     d9fnd.imw = 512
     d9fnd.imh = 512
+    menv.tmp = pointer_from_objref(m_envtmp)
+    menv.world = pointer_from_objref(m_world)
+    menv.view = pointer_from_objref(m_view)
+    menv.proj = pointer_from_objref(m_proj)
+    d9fnd.pMenv = pointer_from_objref(menv)
+    d9fnd.pVecs = pointer_from_objref(vecs)
     istat.d9fnd = pointer_from_objref(d9fnd) # or set C_NULL
     istat.width = w
     istat.height = h
@@ -205,13 +258,13 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
                  #  getindex(::Ptr{DirectX.RenderD3DItemsState}, ::Int32)
   # ist = unsafe_load(pIS, 1) # ok but curious
   ist = unsafe_pointer_to_objref(pIS) # good
+  if ist.stat & 0x00000001 != 0 # non Julia structure
+    d9f = D9Foundation() # (fake to copy and read only access)
+    memcpy(pointer_from_objref(d9f), ist.d9fnd, sizeof(d9f))
+  else # Julia structure
+    d9f = unsafe_pointer_to_objref(ist.d9fnd) # *BAD* for non Julia structure
+  end
   if ist.stat & 0x00008000 != 0
-    if ist.stat & 0x00000001 != 0 # non Julia structure
-      d9f = D9Foundation() # (fake to copy and read only access)
-      memcpy(pointer_from_objref(d9f), ist.d9fnd, sizeof(d9f))
-    else # Julia structure
-      d9f = unsafe_pointer_to_objref(ist.d9fnd) # *BAD* for non Julia structure
-    end
     # println("type: ", typeof(d9f))
     # println("size: ", sizeof(d9f))
     # debugout("OK0[%08X]\n", d9f.pSprite)
@@ -222,6 +275,10 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
       0., 0., 0., 10., 10., 1.)
     BltString(pIS, 0xFF808080, "BLTSTRING", 2, 192, 32, 0.1)
   else
+    menv = unsafe_pointer_to_objref(d9f.pMenv) # expect Julia structure
+    D3DXMatrixRotationY(menv.world, ist.nowTime * 0.06 * pi / 180)
+    SetupMatrices(pIS)
+    DrawAxis(pIS)
     if ist.nowTime - ist.prevTime <= 1000
       if ist.nowTime - ist.prevTime <= 5
         debugout("renderD3DItems %02d %08X\n", ist.fps, ist.nowTime)
