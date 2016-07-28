@@ -49,15 +49,15 @@ type Q_D3DMatrix # in dx9adl.h
   proj::Ptr{Void} # D3DMATRIX *
 end
 
-type QQMatrix # in quotanion.h
-  tmp::Ptr{Void} # QUOTANIONIC_MATRIX *
-  rotation::Ptr{Void} # QUOTANIONIC_MATRIX *
-  scale::Ptr{Void} # QUOTANIONIC_MATRIX *
-  transport::Ptr{Void} # QUOTANIONIC_MATRIX *
+type QQMatrix # in quaternion.h
+  tmp::Ptr{Void} # QUATERNIONIC_MATRIX *
+  rotation::Ptr{Void} # QUATERNIONIC_MATRIX *
+  scale::Ptr{Void} # QUATERNIONIC_MATRIX *
+  transport::Ptr{Void} # QUATERNIONIC_MATRIX *
 end
 
 type VERTEX_GLYPH # in D3DxGlyph.h
-  pQQM::Ptr{Void} # QQMATRIX * # in quotanion.h
+  pQQM::Ptr{Void} # QQMATRIX * # in quaternion.h
   ppTexture::Ptr{Ptr{Void}} # LPDIRECT3DTEXTURE9 *
   pVtxGlyph::Ptr{Void} # LPDIRECT3DVERTEXBUFFER9
   szGlyph::UInt32 # size_t
@@ -78,7 +78,7 @@ type GLYPH_TBL # in D3DxFT2_types.h
   th::UInt32
   rct::Ptr{Void} # CUSTOMRECT * # in D3DxFT2_types.h
   glyphBmp::Ptr{Void} # BOOL (*)(GLYPH_TBL *, FT_Bitmap *, FT_Int, FT_Int)
-  matrix::Ptr{Void} # QUOTANIONIC_MATRIX * # in quotanion.h
+  matrix::Ptr{Void} # QUATERNIONIC_MATRIX * # in quaternion.h
   vtx::Ptr{Void} # GLYPH_VTX * # in D3DxFT2_types.h
   funcs::Ptr{Void} # FT_Outline_Funcs *
   glyphContours::Ptr{Void} # BOOL (*)(GLYPH_TBL *)
