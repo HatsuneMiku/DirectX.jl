@@ -34,7 +34,7 @@ function as_array_from(m::D3DMatrix)
   pointer_to_array(convert(Ptr{Float32}, pointer_from_objref(m)), (4, 4))
 end
 
-function as_array_to(m::D3DMatrix, a::Array{Float32,2}) # 4x4 Array{Float32,2}
+function array_to(m::D3DMatrix, a::Array{Float32,2}) # 4x4 Array{Float32,2}
   m.aa = a[1, 1]; m.ba = a[2, 1]; m.ca = a[3, 1]; m.da = a[4, 1]
   m.ab = a[1, 2]; m.bb = a[2, 2]; m.cb = a[3, 2]; m.db = a[4, 2]
   m.ac = a[1, 3]; m.bc = a[2, 3]; m.cc = a[3, 3]; m.dc = a[4, 3]
@@ -50,7 +50,7 @@ type Q_D3DMatrix # in dx9adl.h
 end
 
 type QQMatrix # in quaternion.h
-  tmp::Ptr{Void} # QUATERNIONIC_MATRIX *
+  transform::Ptr{Void} # QUATERNIONIC_MATRIX *
   rotation::Ptr{Void} # QUATERNIONIC_MATRIX *
   scale::Ptr{Void} # QUATERNIONIC_MATRIX *
   transport::Ptr{Void} # QUATERNIONIC_MATRIX *
@@ -84,7 +84,7 @@ type GLYPH_TBL # in D3DxFT2_types.h
   glyphContours::Ptr{Void} # BOOL (*)(GLYPH_TBL *)
 end
 
-m_tmp = D3DMatrix()
+m_transform = D3DMatrix()
 m_rotation = D3DMatrix(
   1.0,         0.,         0.,  0.,
    0.,  1./1.4142,  1./1.4142,  0.,
@@ -179,7 +179,7 @@ type RenderD3DItemsState # in dx9adl.h
   height::UInt32
 end
 
-m_envtmp = D3DMatrix()
+m_tmp = D3DMatrix()
 m_world = D3DMatrix()
 m_view = D3DMatrix()
 m_proj = D3DMatrix()
@@ -211,7 +211,7 @@ type Dx9adl
     d9fnd.imstring = pointer(ims)
     d9fnd.imw = 512
     d9fnd.imh = 512
-    menv.tmp = pointer_from_objref(m_envtmp)
+    menv.tmp = pointer_from_objref(m_tmp)
     menv.world = pointer_from_objref(m_world)
     menv.view = pointer_from_objref(m_view)
     menv.proj = pointer_from_objref(m_proj)
@@ -285,7 +285,7 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
       end
       t = (75. - 60. * ((ist.nowTime >> 4) % 256) / 256) * pi / 180;
       gt.pIS = pIS
-      qqm.tmp = pointer_from_objref(m_tmp)
+      qqm.transform = pointer_from_objref(m_transform)
       qqm.rotation = pointer_from_objref(m_rotation)
       qqm.scale = pointer_from_objref(m_scale)
       qqm.transport = pointer_from_objref(m_transport)
@@ -320,8 +320,8 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
       mr = as_array_from(m_rotation)
       ms = as_array_from(m_scale)
       mt = as_array_from(m_transport)
-      as_array_to(m_tmp, mt * ms * mr) # transposed matrix reversed multiply
-      gt.matrix = qqm.tmp
+      array_to(m_transform, mt * ms * mr) # transposed matrix reversed multiply
+      gt.matrix = qqm.transform
       gt.vtx = C_NULL
       gt.funcs = C_NULL
       gt.glyphContours = _mf(:d3dxglyph, :D3DXGLP_GlyphContours)
