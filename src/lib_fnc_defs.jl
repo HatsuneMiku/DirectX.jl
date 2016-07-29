@@ -57,6 +57,8 @@ import Relocator: _mf, @mf, @cf, @wf
                     Ptr{Void}, # RenderD3DItemsState
                     Ptr{Void}, Ptr{Void}, Ptr{Void},) # cfunc, cfunc, cfunc
 @mf dx9adl UInt32 MsgLoop (Ptr{Void},) # RenderD3DItemsState
+@mf dx9adl UInt32 DX9_Mode (Ptr{Void},) # RenderD3DItemsState
+@mf dx9adl UInt32 DX9_Status (Ptr{Void},) # RenderD3DItemsState
 
 @wf d3d9 Ptr{Void} Direct3DCreate9 (UInt32,)
 
