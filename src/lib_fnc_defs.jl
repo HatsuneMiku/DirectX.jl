@@ -10,7 +10,7 @@ export load, unload
 
 # must load :freetype before :d3dxfreetype2 (or place to current directory)
 const _dlls = [:d3d9, :d3dx9, :d3dxconsole, :freetype, :d3dxfreetype2,
-  :d3dxglyph, :dx9adl]
+  :d3dxglyph, :d3dxtexturebmp, :dx9adl]
 
 function load(bp::AbstractString="")
   Relocator._init(_dlls, bp)
@@ -41,6 +41,13 @@ import Relocator: _mf, @mf, @cf, @wf
 
 @mf d3dxglyph UInt32 D3DXGLP_GlyphContours (Ptr{Void},) # GLYPH_TBL
 @mf d3dxglyph UInt32 D3DXGLP_DrawGlyph (Ptr{Void},) # GLYPH_TBL
+
+@mf d3dxtexturebmp UInt32 D3DXTXB_RenderFontGlyph (Ptr{Void}, # GLYPH_TBL
+                            Ptr{Void}, Int32, Int32,) # FT_Bitmap
+@mf d3dxtexturebmp UInt32 D3DXTXB_CopyTexture ( # D3DLOCKED_RECT *
+                            Ptr{Void}, Ptr{Void}, Int32,)
+@mf d3dxtexturebmp UInt32 D3DXTXB_RewriteTexture ( # LPDIRECT3DTEXTURE9 *
+                            Ptr{Ptr{Void}}, Ptr{Ptr{Void}},)
 
 @mf dx9adl UInt32 ReleaseNil (Ptr{Ptr{Void}},)
 @mf dx9adl UInt32 SetupMatrices (Ptr{Void},) # RenderD3DItemsState
