@@ -34,6 +34,9 @@ import Relocator: _mf, @mf, @cf, @wf
 @mf d3dxconsole Void debugout (Ptr{UInt8}, UInt32, UInt32,)
 @mf d3dxconsole Void debugfree ()
 
+@mf d3dxfreetype2 UInt32 D3DXFT2_GlyphAlloc (Ptr{Void}, # GLYPH_TBL
+                           UInt32, UInt32,)
+@mf d3dxfreetype2 UInt32 D3DXFT2_GlyphFree (Ptr{Void},) # GLYPH_TBL
 @mf d3dxfreetype2 UInt32 D3DXFT2_GlyphOutline (Ptr{Void},) # GLYPH_TBL
 
 @mf d3dxglyph UInt32 D3DXGLP_GlyphContours (Ptr{Void},) # GLYPH_TBL

@@ -63,6 +63,23 @@ type VERTEX_GLYPH # in D3DxGlyph.h
   szGlyph::UInt32 # size_t
 end
 
+bitstype (8 * 4) FT_PosBits # fake real byte size # signed long
+bitstype (8 * 4 * 2) FT_VectorBits # fake real byte size # {FT_Pos x, FT_Pos y}
+
+type GLYPH_VTX # in D3DxFT2_types.h
+  contour::Ptr{Void} # GLYPH_CONTOUR * # in D3DxFT2_types.h
+  cmx::UInt32
+  ctc::UInt32
+  buf::Ptr{Void} # CUSTOMCUV * # in D3DxFT2_types.h
+  bmx::UInt32
+  btc::UInt32
+  p::FT_VectorBits
+  pz::FT_PosBits
+  z::FT_PosBits
+  col::UInt32
+  bgc::UInt32
+end
+
 type GLYPH_TBL # in D3DxFT2_types.h
   pIS::Ptr{Void} # RENDERD3DITEMSSTATE * # in dx9adl.h
   pVG::Ptr{Void} # VERTEX_GLYPH * # in D3DxGlyph.h
@@ -82,6 +99,8 @@ type GLYPH_TBL # in D3DxFT2_types.h
   vtx::Ptr{Void} # GLYPH_VTX * # in D3DxFT2_types.h
   funcs::Ptr{Void} # FT_Outline_Funcs *
   glyphContours::Ptr{Void} # BOOL (*)(GLYPH_TBL *)
+  glyphAlloc::Ptr{Void} # BOOL (*)(GLYPH_TBL *)
+  glyphFree::Ptr{Void} # BOOL (*)(GLYPH_TBL *)
 end
 
 m_transform = D3DMatrix()
@@ -102,9 +121,14 @@ m_transport = D3DMatrix(
   -4., -1., -2., 1.0)
 qqm = QQMatrix(C_NULL, C_NULL, C_NULL, C_NULL) # re-set later
 vg = VERTEX_GLYPH(C_NULL, C_NULL, C_NULL, 0) # re-set later
+gv = GLYPH_VTX(C_NULL, 0, 0, C_NULL, 0, 0, # re-set later
+  reinterpret(FT_VectorBits, Int32[0, 0])[],
+  reinterpret(FT_PosBits, Int32[0])[], reinterpret(FT_PosBits, Int32[0])[],
+  0, 0)
 gt = GLYPH_TBL(C_NULL, C_NULL, C_NULL, C_NULL, # re-set later
   Float32(6000.), Float32(25.), 0, 0,
-  0, 1024, 256, 256, C_NULL, C_NULL, C_NULL, C_NULL, C_NULL, C_NULL)
+  0, 1024, 256, 256, C_NULL, C_NULL,
+  C_NULL, C_NULL, C_NULL, C_NULL, C_NULL, C_NULL)
 
 type D3DVector
   x::Float32; y::Float32; z::Float32
@@ -163,20 +187,20 @@ type D9Foundation # (fake to copy and read only access) in dx9adl.h
 end
 
 type RenderD3DItemsState # in dx9adl.h
+  parent::Ptr{Void}
+  d9fnd::Ptr{D9Foundation}
   sysChain::Ptr{Void}
   usrChain::Ptr{Void}
-  stat::UInt32
+  width::UInt32
+  height::UInt32
+  bgc::UInt32
+  fgc::UInt32
   mode::UInt32
+  stat::UInt32
   hWnd::UInt32 # HWND
-  reserved0::UInt32
-  d9fnd::Ptr{D9Foundation}
-  parent::Ptr{Void}
-  reserved1::UInt32
   fps::UInt32
   prevTime::UInt32
   nowTime::UInt32
-  width::UInt32
-  height::UInt32
 end
 
 m_tmp = D3DMatrix()
@@ -190,8 +214,8 @@ vecs = D9F_Vecs(
   D3DVector(0., 1., 0.), 0,
   3./4., 1., 1., 100.)
 d9fnd = D9Foundation() # holder (must be out of struct Dx9adl ?)
-istat = RenderD3DItemsState(C_NULL, C_NULL, 0, 0, 0, 0, # re-set later
-  C_NULL, C_NULL, 0, 0, 0, 0, 0, 0)
+istat = RenderD3DItemsState(C_NULL, C_NULL, C_NULL, C_NULL, # re-set later
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
 type Dx9adl
   basepath::AbstractString # base path
@@ -220,6 +244,9 @@ type Dx9adl
     istat.d9fnd = pointer_from_objref(d9fnd) # or set C_NULL
     istat.width = w
     istat.height = h
+    istat.fgc = 0x80EE66CC
+    istat.bgc = 0xFFFF80FF
+    istat.mode = 0x0CC00000
     # set mode 0 to skip debugalloc/debugfree
     d = new(bp, res, ims, d9fnd, istat) # set parent later
     d.istat.parent = pointer_from_objref(d)
@@ -322,9 +349,13 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
       mt = as_array_from(m_transport)
       array_to(m_transform, mt * ms * mr) # transposed matrix reversed multiply
       gt.matrix = qqm.transform
-      gt.vtx = C_NULL
+      gv.col = ist.fgc
+      gv.bgc = ist.bgc
+      gt.vtx = pointer_from_objref(gv)
       gt.funcs = C_NULL
       gt.glyphContours = _mf(:d3dxglyph, :D3DXGLP_GlyphContours)
+      gt.glyphAlloc = _mf(:d3dxfreetype2, :D3DXFT2_GlyphAlloc)
+      gt.glyphFree = _mf(:d3dxfreetype2, :D3DXFT2_GlyphFree)
       D3DXFT2_GlyphOutline(pointer_from_objref(gt))
     end
     D3DXGLP_DrawGlyph(pointer_from_objref(gt))
