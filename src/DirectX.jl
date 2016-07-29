@@ -359,7 +359,7 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
       D3DXFT2_GlyphOutline(pointer_from_objref(gt))
     end
     D3DXGLP_DrawGlyph(pointer_from_objref(gt))
-    DrawString(pIS, 0xFFFFFFFF, "DRAWSTRING", 3, 0.5, 0.5, 0.1, -3., 1., -2.)
+    DrawString(pIS, ist.fgc, "DRAWSTRING", 2, 0.5, 0.5, 0.1, -3., 1., -2.)
   end
   return 1::Cint
 end
