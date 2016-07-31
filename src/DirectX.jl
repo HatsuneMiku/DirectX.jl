@@ -15,6 +15,8 @@ export initD3DApp, msgLoop
 const res_default = (512, 512, "_string.png", "res")
 const face_default = ("mikaP.ttf",)
 
+const TXSRC, TXDST = 0:1
+
 type D3DMatrix # (fake to copy and read only access) in dx9adl.h
   aa::Float32; ba::Float32; ca::Float32; da::Float32
   ab::Float32; bb::Float32; cb::Float32; db::Float32
@@ -53,7 +55,7 @@ type QQMatrix # in quaternion.h
   transform::Ptr{Void} # QUATERNIONIC_MATRIX *
   rotation::Ptr{Void} # QUATERNIONIC_MATRIX *
   scale::Ptr{Void} # QUATERNIONIC_MATRIX *
-  transport::Ptr{Void} # QUATERNIONIC_MATRIX *
+  translate::Ptr{Void} # QUATERNIONIC_MATRIX *
 end
 
 type VERTEX_GLYPH # in D3DxGlyph.h
@@ -114,7 +116,7 @@ m_scale = D3DMatrix(
    0., 1.5,  0.,  0.,
    0.,  0., 1.5,  0.,
    0.,  0.,  0., 1.0)
-m_transport = D3DMatrix(
+m_translate = D3DMatrix(
   1.0,  0.,  0.,  0.,
    0., 1.0,  0.,  0.,
    0.,  0., 1.0,  0.,
@@ -189,8 +191,10 @@ end
 type RenderD3DItemsState # in dx9adl.h
   parent::Ptr{Void}
   d9fnd::Ptr{D9Foundation}
-  sysChain::Ptr{Void}
-  usrChain::Ptr{Void}
+  sysChain::Ptr{Ptr{Void}}
+  usrChain::Ptr{Ptr{Void}}
+  smx::UInt32
+  umx::UInt32
   width::UInt32
   height::UInt32
   bgc::UInt32
@@ -215,7 +219,7 @@ vecs = D9F_Vecs(
   3./4., 1., 1., 100.)
 d9fnd = D9Foundation() # holder (must be out of struct Dx9adl ?)
 istat = RenderD3DItemsState(C_NULL, C_NULL, C_NULL, C_NULL, # re-set later
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
 type Dx9adl
   basepath::AbstractString # base path
@@ -269,6 +273,13 @@ end
 function initD3DItems(pIS::Ptr{RenderD3DItemsState})
   ist = unsafe_pointer_to_objref(pIS)
   debugout("initD3DItems: %08X\n", ist.stat)
+  d9f = unsafe_pointer_to_objref(ist.d9fnd) # expect Julia structure
+  d9 = unsafe_pointer_to_objref(ist.parent) # expect Julia structure
+  imp = replace(d9.respath * "/_col_4.png", "/", "\\") # only for Windows
+  D3DXCreateTextureFromFileA(d9f.pDev, pointer(imp.data), PtrPtrU(pIS, TXSRC))
+  D3DXTXB_CreateTexture(d9f.pDev, 256, 256, PtrPtrU(pIS, TXDST))
+  debugout("pTexSrc: %08X\n", PtrUO(pIS, TXSRC))
+  debugout("pTex: %08X\n", PtrUO(pIS, TXDST))
   return 1::Cint
 end
 
@@ -277,6 +288,8 @@ function cleanupD3DItems(pIS::Ptr{RenderD3DItemsState})
   debugout("cleanupD3DItems: %08X\n", ist.stat)
   # ReleaseNil(pointer_from_objref(vg.pVtxGlyph)) # *BAD*
   ReleaseNil(pointer_from_objref(vg) + sizeof(Ptr{Ptr{Void}}))
+  debugout("pTex: %08X\n", PtrUO(pIS, TXDST))
+  debugout("pTexSrc: %08X\n", PtrUO(pIS, TXSRC))
   return 1::Cint
 end
 
@@ -297,9 +310,12 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
     # debugout("OK0[%08X]\n", d9f.pSprite)
     pSprite = d9f.pSprite
     # debugout("OK1[%08X]\n", pSprite)
+    D3DXTXB_RewriteTexture(PtrPtrU(pIS, TXDST), PtrPtrU(pIS, TXSRC))
+    BltTexture(pIS, 0xFFFFFFFF, PtrPtrU(pIS, TXDST), 0, 0, 256, 256,
+      0., 0., 0., 10., 100., 1.)
     ppTexture = pointer_from_objref(d9f.pString)
     BltTexture(pIS, 0xFFFFFFFF, ppTexture, 0, 0, 512, 512,
-      0., 0., 0., 10., 10., 1.)
+      0., 0., 0., 10., 10., .5)
     BltString(pIS, 0xFF808080, "BLTSTRING", 2, 192, 32, 0.1)
   else
     menv = unsafe_pointer_to_objref(d9f.pMenv) # expect Julia structure
@@ -315,7 +331,7 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
       qqm.transform = pointer_from_objref(m_transform)
       qqm.rotation = pointer_from_objref(m_rotation)
       qqm.scale = pointer_from_objref(m_scale)
-      qqm.transport = pointer_from_objref(m_transport)
+      qqm.translate = pointer_from_objref(m_translate)
       vg.pQQM = pointer_from_objref(qqm)
       vg.ppTexture = C_NULL
       # debugout("<%08X><%08X>\n",
@@ -346,7 +362,7 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
       m_rotation.bc = - (m_rotation.cb = sin(t))
       mr = as_array_from(m_rotation)
       ms = as_array_from(m_scale)
-      mt = as_array_from(m_transport)
+      mt = as_array_from(m_translate)
       array_to(m_transform, mt * ms * mr) # transposed matrix reversed multiply
       gt.matrix = qqm.transform
       gv.col = ist.fgc
