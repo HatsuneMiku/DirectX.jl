@@ -15,6 +15,7 @@ export initD3DApp, msgLoop
 const res_default = (512, 512, "_string.png", "res")
 const face_default = ("mikaP.ttf",)
 
+const PSO_D3D, PSO_DEV, PSO_SPRITE, PSO_FONT, PSO_STRING, PSO_STRVBUF = 0:5
 const TXSRC, TXDST = 0:1
 
 type D3DMatrix # (fake to copy and read only access) in dx9adl.h
@@ -173,10 +174,6 @@ type D9Foundation # (fake to copy and read only access) in dx9adl.h
   pD3Dpp::Ptr{Ptr{Void}} # D3DPRESENT_PARAMETERS *
   pD3D::Ptr{Void} # LPDIRECT3D9
   pDev::Ptr{Void} # LPDIRECT3DDEVICE9
-  pSprite::Ptr{Void} # LPD3DXSPRITE
-  pFont::Ptr{Void} # LPD3DXFONT
-  pString::Ptr{Void} # LPDIRECT3DTEXTURE9
-  pStringVBuf::Ptr{Void} # LPDIRECT3DVERTEXBUFFER9
   pMenv::Ptr{Void} # Q_D3DMATRIX * # in dx9adl.h
   pVecs::Ptr{Void} # D9F_VECS * # in dx9adl.h
   imstring::Ptr{Cchar}
@@ -307,14 +304,15 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
   if ist.stat & 0x00008000 != 0
     # println("type: ", typeof(d9f))
     # println("size: ", sizeof(d9f))
-    # debugout("OK0[%08X]\n", d9f.pSprite)
-    pSprite = d9f.pSprite
-    # debugout("OK1[%08X]\n", pSprite)
+    # debugout("ppSprite[%08X]\n", PtrPtrS(pIS, PSO_SPRITE))
+    pSprite = PtrSO(pIS, PSO_SPRITE)
+    # debugout("pSprite[%08X]\n", pSprite)
     D3DXTXB_RewriteTexture(PtrPtrU(pIS, TXDST), PtrPtrU(pIS, TXSRC))
     BltTexture(pIS, 0xFFFFFFFF, PtrPtrU(pIS, TXDST), 0, 0, 256, 256,
       0., 0., 0., 10., 100., 1.)
-    ppTexture = pointer_from_objref(d9f.pString)
-    BltTexture(pIS, 0xFFFFFFFF, ppTexture, 0, 0, 512, 512,
+    # ppTexture = pointer_from_objref(d9f.pString) # ok but obsoleted
+    # ppTexture = pointer_from_objref(PtrSO(pIS, PSO_STRING)) # another pointer
+    BltTexture(pIS, 0xFFFFFFFF, PtrPtrS(pIS, PSO_STRING), 0, 0, 512, 512,
       0., 0., 0., 10., 10., .5)
     BltString(pIS, 0xFF808080, "BLTSTRING", 2, 192, 32, 0.1)
   else
