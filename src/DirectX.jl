@@ -16,7 +16,7 @@ const res_default = (512, 512, "_string.png", "res")
 const face_default = ("mikaP.ttf",)
 
 const PSO_D3D, PSO_DEV, PSO_SPRITE, PSO_FONT, PSO_STRING, PSO_STRVBUF = 0:5
-const TXSRC, TXDST = 0:1
+const TXSRC, TXDST, VtxGlp = 0:2
 
 type D3DMatrix # (fake to copy and read only access) in dx9adl.h
   aa::Float32; ba::Float32; ca::Float32; da::Float32
@@ -62,7 +62,7 @@ end
 type VERTEX_GLYPH # in D3DxGlyph.h
   pQQM::Ptr{Void} # QQMATRIX * # in quaternion.h
   ppTexture::Ptr{Ptr{Void}} # LPDIRECT3DTEXTURE9 *
-  pVtxGlyph::Ptr{Void} # LPDIRECT3DVERTEXBUFFER9
+  ppVtxGlyph::Ptr{Ptr{Void}} # LPDIRECT3DVERTEXBUFFER9 *
   szGlyph::UInt32 # size_t
 end
 
@@ -332,11 +332,8 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
       qqm.translate = pointer_from_objref(m_translate)
       vg.pQQM = pointer_from_objref(qqm)
       vg.ppTexture = C_NULL
-      # debugout("<%08X><%08X>\n",
-      #   pointer_from_objref(vg.pVtxGlyph),
-      #   pointer_from_objref(vg) + 2 * sizeof(Ptr{Void}))
-      # ReleaseNil(pointer_from_objref(vg.pVtxGlyph)) # *BAD*
-      ReleaseNil(pointer_from_objref(vg) + 2 * sizeof(Ptr{Void}))
+      vg.ppVtxGlyph = PtrPtrU(pIS, VtxGlp)
+      ReleaseNil(vg.ppVtxGlyph)
       vg.szGlyph = 0;
       gt.pVG = pointer_from_objref(vg)
       d9 = unsafe_pointer_to_objref(ist.parent)
