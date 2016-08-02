@@ -40,6 +40,18 @@ macro ptr_as(typ, obj)
   end
 end
 
+macro q2m(mq, m0, m1) # transposed matrix reversed multiply
+  quote
+    array_to($mq, as_array_from($m1) * as_array_from($m0))
+  end
+end
+
+macro q3m(mq, m0, m1, m2) # transposed matrix reversed multiply
+  quote
+    array_to($mq, as_array_from($m2) * as_array_from($m1) * as_array_from($m0))
+  end
+end
+
 import Relocator: _mf, @mf, @cf, @wf
 
 @wf kernel32 UInt32 GetModuleHandleA (Ptr{Void},)

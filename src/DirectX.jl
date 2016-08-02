@@ -350,10 +350,7 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
       gt.glyphBmp = C_NULL
       m_rotation.cc = m_rotation.bb = cos(t)
       m_rotation.bc = - (m_rotation.cb = sin(t))
-      mr = as_array_from(m_rotation)
-      ms = as_array_from(m_scale)
-      mt = as_array_from(m_translate)
-      array_to(m_transform, mt * ms * mr) # transposed matrix reversed multiply
+      @q3m m_transform m_rotation m_scale m_translate
       gt.matrix = qqm.transform
       gv.col = ist.fgc
       gv.bgc = ist.bgc
