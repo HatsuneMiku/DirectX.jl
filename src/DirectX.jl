@@ -17,6 +17,7 @@ const face_default = ("mikaP.ttf",)
 
 const PSO_D3D, PSO_DEV, PSO_SPRITE, PSO_FONT, PSO_STRING, PSO_STRVBUF = 0:5
 const TXSRC, TXDST, VtxGlp = 0:2
+const txs = ["_col_4.png", "_D_00.png", "_D_01.dds", "_D_02.png", "_D_go.png"]
 
 type D3DMatrix # (fake to copy and read only access) in dx9adl.h
   aa::Float32; ba::Float32; ca::Float32; da::Float32
@@ -266,11 +267,15 @@ function initD3DItems(pIS::Ptr{RenderD3DItemsState})
   debugout("initD3DItems: %08X\n", ist.stat)
   d9f = @juliaobj ist.d9fnd # expect Julia structure
   d9 = @juliaobj ist.parent # expect Julia structure
-  imp = replace(d9.respath * "/_col_4.png", "/", "\\") # only for Windows
+  imp = replace(d9.respath * "/" * txs[1], "/", "\\") # only for Windows
   D3DXCreateTextureFromFileA(d9f.pDev, pointer(imp.data), PtrPtrU(pIS, TXSRC))
   D3DXTXB_CreateTexture(d9f.pDev, 256, 256, PtrPtrU(pIS, TXDST))
   debugout("pTexSrc: %08X\n", PtrUO(pIS, TXSRC))
   debugout("pTex: %08X\n", PtrUO(pIS, TXDST))
+  if PtrUO(pIS, TXSRC) == C_NULL
+    debugout("not found ? [%s]\n", pointer(imp.data))
+    return 0::Cint
+  end
   return 1::Cint
 end
 
@@ -326,7 +331,7 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
       qqm.scale = @ptr m_scale
       qqm.translate = @ptr m_translate
       vg.pQQM = @ptr qqm
-      vg.ppTexture = C_NULL
+      vg.ppTexture = PtrPtrU(pIS, TXDST)
       vg.ppVtxGlyph = PtrPtrU(pIS, VtxGlp)
       ReleaseNil(vg.ppVtxGlyph)
       vg.szGlyph = 0;
