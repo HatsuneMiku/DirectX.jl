@@ -20,6 +20,24 @@ function unload()
   Relocator._close()
 end
 
+end # DLL_Loader
+
+macro juliaobj(ptr)
+  quote
+    unsafe_pointer_to_objref($ptr)
+  end
+end
+
+macro ptr(obj)
+  quote
+    pointer_from_objref($obj)
+  end
+end
+
+macro ptr_as(typ, obj)
+  quote
+    convert(Ptr{$typ}, pointer_from_objref($obj))
+  end
 end
 
 import Relocator: _mf, @mf, @cf, @wf

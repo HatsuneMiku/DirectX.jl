@@ -34,7 +34,7 @@ D3DMatrix() = D3DMatrix(
   0., 0., 0., 1.)
 
 function as_array_from(m::D3DMatrix)
-  pointer_to_array(convert(Ptr{Float32}, pointer_from_objref(m)), (4, 4))
+  pointer_to_array((@ptr_as Float32 m), (4, 4))
 end
 
 function array_to(m::D3DMatrix, a::Array{Float32,2}) # 4x4 Array{Float32,2}
@@ -157,15 +157,9 @@ type D9F_Vecs # (construction values of matrices) in dx9adl.h
   function D9F_Vecs(eyePt, reserved0, lookatPt, reserved1, upVec, reserved2,
     fovY, aspect, zn, zf)
     return new(
-      pointer_to_array(convert(Ptr{D3DVectorBits}, pointer_from_objref(
-        eyePt)), 1)[],
-      reserved0,
-      pointer_to_array(convert(Ptr{D3DVectorBits}, pointer_from_objref(
-        lookatPt)), 1)[],
-      reserved1,
-      pointer_to_array(convert(Ptr{D3DVectorBits}, pointer_from_objref(
-        upVec)), 1)[],
-      reserved2,
+      pointer_to_array((@ptr_as D3DVectorBits eyePt), 1)[], reserved0,
+      pointer_to_array((@ptr_as D3DVectorBits lookatPt), 1)[], reserved1,
+      pointer_to_array((@ptr_as D3DVectorBits upVec), 1)[], reserved2,
       fovY, aspect, zn, zf)
   end
 end
@@ -230,19 +224,19 @@ type Dx9adl
     ims = replace(res * "/" * res_default[3], "/", "\\") # only for Windows
     # OK pointer(ims) # AbstractString to Cchar
     # OK pointer(ims.data) # Array{UInt8,1} to Cchar
-    # BAD pointer_from_objref(ims)
-    # BAD pointer_from_objref(ims.data)
-    # OK pointer_from_objref(ims.data) + 32 # OK but wrong way
+    # BAD @ptr ims
+    # BAD @ptr ims.data
+    # OK (@ptr ims.data) + 32 # OK but wrong way
     d9fnd.imstring = pointer(ims)
     d9fnd.imw = 512
     d9fnd.imh = 512
-    menv.tmp = pointer_from_objref(m_tmp)
-    menv.world = pointer_from_objref(m_world)
-    menv.view = pointer_from_objref(m_view)
-    menv.proj = pointer_from_objref(m_proj)
-    d9fnd.pMenv = pointer_from_objref(menv)
-    d9fnd.pVecs = pointer_from_objref(vecs)
-    istat.d9fnd = pointer_from_objref(d9fnd) # or set C_NULL
+    menv.tmp = @ptr m_tmp
+    menv.world = @ptr m_world
+    menv.view = @ptr m_view
+    menv.proj = @ptr m_proj
+    d9fnd.pMenv = @ptr menv
+    d9fnd.pVecs = @ptr vecs
+    istat.d9fnd = @ptr d9fnd # or set C_NULL
     istat.width = w
     istat.height = h
     istat.fgc = 0x80EE66CC
@@ -250,7 +244,7 @@ type Dx9adl
     istat.mode = 0x0CC00000
     # set mode 0 to skip debugalloc/debugfree
     d = new(bp, res, ims, d9fnd, istat) # set parent later
-    d.istat.parent = pointer_from_objref(d)
+    d.istat.parent = @ptr d
     return d
   end
 end
@@ -268,10 +262,10 @@ function close(d9::Dx9adl)
 end
 
 function initD3DItems(pIS::Ptr{RenderD3DItemsState})
-  ist = unsafe_pointer_to_objref(pIS)
+  ist = @juliaobj pIS
   debugout("initD3DItems: %08X\n", ist.stat)
-  d9f = unsafe_pointer_to_objref(ist.d9fnd) # expect Julia structure
-  d9 = unsafe_pointer_to_objref(ist.parent) # expect Julia structure
+  d9f = @juliaobj ist.d9fnd # expect Julia structure
+  d9 = @juliaobj ist.parent # expect Julia structure
   imp = replace(d9.respath * "/_col_4.png", "/", "\\") # only for Windows
   D3DXCreateTextureFromFileA(d9f.pDev, pointer(imp.data), PtrPtrU(pIS, TXSRC))
   D3DXTXB_CreateTexture(d9f.pDev, 256, 256, PtrPtrU(pIS, TXDST))
@@ -281,10 +275,11 @@ function initD3DItems(pIS::Ptr{RenderD3DItemsState})
 end
 
 function cleanupD3DItems(pIS::Ptr{RenderD3DItemsState})
-  ist = unsafe_pointer_to_objref(pIS)
+  ist = @juliaobj pIS
   debugout("cleanupD3DItems: %08X\n", ist.stat)
-  # ReleaseNil(pointer_from_objref(vg.pVtxGlyph)) # *BAD*
-  ReleaseNil(pointer_from_objref(vg) + sizeof(Ptr{Ptr{Void}}))
+  # ReleaseNil(@ptr vg.pVtxGlyph) # *BAD*
+  # ReleaseNil((@ptr vg) + 2 * sizeof(Ptr{Void})) # obsoleted another pointer
+  # ReleaseNil(vg.ppVtxGlyph) # needless
   debugout("pTex: %08X\n", PtrUO(pIS, TXDST))
   debugout("pTexSrc: %08X\n", PtrUO(pIS, TXSRC))
   return 1::Cint
@@ -294,12 +289,12 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
   # ist = pIS[1] # MethodError: `getindex` has no method matching
                  #  getindex(::Ptr{DirectX.RenderD3DItemsState}, ::Int32)
   # ist = unsafe_load(pIS, 1) # ok but curious
-  ist = unsafe_pointer_to_objref(pIS) # good
+  ist = @juliaobj pIS # good
   if ist.stat & 0x00000001 != 0 # non Julia structure
     d9f = D9Foundation() # (fake to copy and read only access)
-    memcpy(pointer_from_objref(d9f), ist.d9fnd, sizeof(d9f))
+    memcpy((@ptr d9f), ist.d9fnd, sizeof(d9f))
   else # Julia structure
-    d9f = unsafe_pointer_to_objref(ist.d9fnd) # *BAD* for non Julia structure
+    d9f = @juliaobj ist.d9fnd # *BAD* for non Julia structure
   end
   if ist.stat & 0x00008000 != 0
     # println("type: ", typeof(d9f))
@@ -310,13 +305,13 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
     D3DXTXB_RewriteTexture(PtrPtrU(pIS, TXDST), PtrPtrU(pIS, TXSRC))
     BltTexture(pIS, 0xFFFFFFFF, PtrPtrU(pIS, TXDST), 0, 0, 256, 256,
       0., 0., 0., 10., 100., 1.)
-    # ppTexture = pointer_from_objref(d9f.pString) # ok but obsoleted
-    # ppTexture = pointer_from_objref(PtrSO(pIS, PSO_STRING)) # another pointer
+    # ppTexture = @ptr d9f.pString # ok but obsoleted
+    # ppTexture = @ptr PtrSO(pIS, PSO_STRING) # ok but another pointer
     BltTexture(pIS, 0xFFFFFFFF, PtrPtrS(pIS, PSO_STRING), 0, 0, 512, 512,
       0., 0., 0., 10., 10., .5)
     BltString(pIS, 0xFF808080, "BLTSTRING", 2, 192, 32, 0.1)
   else
-    menv = unsafe_pointer_to_objref(d9f.pMenv) # expect Julia structure
+    menv = @juliaobj d9f.pMenv # expect Julia structure
     D3DXMatrixRotationY(menv.world, ist.nowTime * 0.06 * pi / 180)
     SetupMatrices(pIS)
     DrawAxis(pIS)
@@ -326,17 +321,17 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
       end
       t = (75. - 60. * ((ist.nowTime >> 4) % 256) / 256) * pi / 180;
       gt.pIS = pIS
-      qqm.transform = pointer_from_objref(m_transform)
-      qqm.rotation = pointer_from_objref(m_rotation)
-      qqm.scale = pointer_from_objref(m_scale)
-      qqm.translate = pointer_from_objref(m_translate)
-      vg.pQQM = pointer_from_objref(qqm)
+      qqm.transform = @ptr m_transform
+      qqm.rotation = @ptr m_rotation
+      qqm.scale = @ptr m_scale
+      qqm.translate = @ptr m_translate
+      vg.pQQM = @ptr qqm
       vg.ppTexture = C_NULL
       vg.ppVtxGlyph = PtrPtrU(pIS, VtxGlp)
       ReleaseNil(vg.ppVtxGlyph)
       vg.szGlyph = 0;
-      gt.pVG = pointer_from_objref(vg)
-      d9 = unsafe_pointer_to_objref(ist.parent)
+      gt.pVG = @ptr vg
+      d9 = @juliaobj ist.parent
       facepath = replace(d9.respath * "/" * face_default[1], "/", "\\")
       # debugout("[%s]\n", pointer(facepath.data))
       gt.facename = pointer(facepath.data)
@@ -362,27 +357,27 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
       gt.matrix = qqm.transform
       gv.col = ist.fgc
       gv.bgc = ist.bgc
-      gt.vtx = pointer_from_objref(gv)
+      gt.vtx = @ptr gv
       gt.funcs = C_NULL
       gt.glyphContours = _mf(:d3dxglyph, :D3DXGLP_GlyphContours)
       gt.glyphAlloc = _mf(:d3dxfreetype2, :D3DXFT2_GlyphAlloc)
       gt.glyphFree = _mf(:d3dxfreetype2, :D3DXFT2_GlyphFree)
-      D3DXFT2_GlyphOutline(pointer_from_objref(gt))
+      D3DXFT2_GlyphOutline(@ptr gt)
     end
-    D3DXGLP_DrawGlyph(pointer_from_objref(gt))
+    D3DXGLP_DrawGlyph(@ptr gt)
     DrawString(pIS, ist.fgc, "DRAWSTRING", 2, 0.5, 0.5, 0.1, -3., 1., -2.)
   end
   return 1::Cint
 end
 
 function initD3DApp(d9::Dx9adl)
-  debugout("adl_test &d9.istat = %08X\n", pointer_from_objref(d9.istat))
+  debugout("adl_test &d9.istat = %08X\n", @ptr d9.istat)
   hInst = GetModuleHandleA(C_NULL)
   nShow = 1 # 1: SW_SHOWNORMAL or 5: SW_SHOW
   className = "juliaClsDx9ADLtest"
   appName = "juliaAppDx9ADLtest"
   return InitD3DApp(
-    hInst, nShow, className, appName, pointer_from_objref(d9.istat),
+    hInst, nShow, className, appName, (@ptr d9.istat),
     cfunction(initD3DItems, Cint, (Ptr{RenderD3DItemsState},)),
     cfunction(cleanupD3DItems, Cint, (Ptr{RenderD3DItemsState},)),
     cfunction(renderD3DItems, Cint, (Ptr{RenderD3DItemsState},)))
@@ -392,7 +387,7 @@ function msgLoop(d9::Dx9adl)
   r = -1
   debugout("in\n")
   try
-    r = MsgLoop(pointer_from_objref(d9.istat))
+    r = MsgLoop(@ptr d9.istat)
   catch err
     debugout("err\n")
     println(err)
