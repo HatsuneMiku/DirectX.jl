@@ -40,15 +40,27 @@ macro ptr_as(typ, obj)
   end
 end
 
+macro as_bits(typ, obj)
+  quote
+    pointer_to_array((@ptr_as $typ $obj), 1)[]
+  end
+end
+
+macro as_array(m)
+  quote
+    pointer_to_array((@ptr_as Float32 $m), (4, 4))
+  end
+end
+
 macro q2m(mq, m0, m1) # transposed matrix reversed multiply
   quote
-    array_to($mq, as_array_from($m1) * as_array_from($m0))
+    array_to($mq, (@as_array $m1) * (@as_array $m0))
   end
 end
 
 macro q3m(mq, m0, m1, m2) # transposed matrix reversed multiply
   quote
-    array_to($mq, as_array_from($m2) * as_array_from($m1) * as_array_from($m0))
+    array_to($mq, (@as_array $m2) * (@as_array $m1) * (@as_array $m0))
   end
 end
 

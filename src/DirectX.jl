@@ -34,10 +34,6 @@ D3DMatrix() = D3DMatrix(
   0., 0., 1., 0.,
   0., 0., 0., 1.)
 
-function as_array_from(m::D3DMatrix)
-  pointer_to_array((@ptr_as Float32 m), (4, 4))
-end
-
 function array_to(m::D3DMatrix, a::Array{Float32,2}) # 4x4 Array{Float32,2}
   m.aa = a[1, 1]; m.ba = a[2, 1]; m.ca = a[3, 1]; m.da = a[4, 1]
   m.ab = a[1, 2]; m.bb = a[2, 2]; m.cb = a[3, 2]; m.db = a[4, 2]
@@ -158,9 +154,9 @@ type D9F_Vecs # (construction values of matrices) in dx9adl.h
   function D9F_Vecs(eyePt, reserved0, lookatPt, reserved1, upVec, reserved2,
     fovY, aspect, zn, zf)
     return new(
-      pointer_to_array((@ptr_as D3DVectorBits eyePt), 1)[], reserved0,
-      pointer_to_array((@ptr_as D3DVectorBits lookatPt), 1)[], reserved1,
-      pointer_to_array((@ptr_as D3DVectorBits upVec), 1)[], reserved2,
+      (@as_bits D3DVectorBits eyePt), reserved0,
+      (@as_bits D3DVectorBits lookatPt), reserved1,
+      (@as_bits D3DVectorBits upVec), reserved2,
       fovY, aspect, zn, zf)
   end
 end
