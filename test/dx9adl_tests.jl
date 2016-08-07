@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 
-import DirectX
+include("dx9adl_demo_0001.jl")
 
 println("Testing DirectX")
 d9 = DirectX.connect(64 * 16, 64 * 9)
 @test d9 != nothing
-DirectX.initD3DApp(d9)
-@test 0 == DirectX.msgLoop(d9)
+@test 0 == demo_0001(d9)
 @test DirectX.close(d9)
 # @test ture != false
 @test false != true

@@ -9,8 +9,9 @@ import Relocator
 export load, unload
 
 # must load :freetype before :d3dxfreetype2 (or place to current directory)
+# must load :dx9adl before :d3dxglyph (or place to current directory)
 const _dlls = [:d3d9, :d3dx9, :d3dxconsole, :freetype, :d3dxfreetype2,
-  :d3dxglyph, :d3dxtexturebmp, :dx9adl]
+  :d3dxtexturebmp, :dx9adl, :d3dxglyph]
 
 function load(bp::AbstractString="")
   Relocator._init(_dlls, bp)
@@ -40,9 +41,24 @@ macro ptr_as(typ, obj)
   end
 end
 
+# typ must be bitstype (TypStructBits <- TypStruct)
 macro as_bits(typ, obj)
   quote
     pointer_to_array((@ptr_as $typ $obj), 1)[]
+  end
+end
+
+# typ must be immutable (ImmuStruct <- TypStructBits)
+macro bits_to(typ, obj)
+  quote
+    pointer_to_array((@ptr_as $typ $obj), 1)[]
+  end
+end
+
+# typ must be immutable (ImmuStruct <- Array{TypStructBits,1}[idx])
+macro bits_elem(typ, ary, idx)
+  quote
+    pointer_to_array(convert(Ptr{$typ}, pointer($ary)), idx)[idx]
   end
 end
 
@@ -106,14 +122,13 @@ import Relocator: _mf, @mf, @cf, @wf
 @mf d3dxfreetype2 UInt32 D3DXFT2_GlyphOutline (Ptr{Void},) # GLYPH_TBL
 @mf d3dxfreetype2 UInt32 D3DXFT2_Status (Ptr{Void},) # GLYPH_TBL
 
-@mf d3dxglyph UInt32 D3DXGLP_InitFont ()
-@mf d3dxglyph UInt32 D3DXGLP_CleanupFont ()
-@mf d3dxglyph UInt32 D3DXGLP_GlyphContours (Ptr{Void},) # GLYPH_TBL
-@mf d3dxglyph UInt32 D3DXGLP_DrawGlyph (Ptr{Void},) # GLYPH_TBL
-
 @mf d3dxtexturebmp UInt32 D3DXTXB_CreateTexture (Ptr{Void}, # LPDIRECT3DDEVICE9
                             UInt32, UInt32,
                             Ptr{Ptr{Void}},) # LPDIRECT3DTEXTURE9 *
+@mf d3dxtexturebmp UInt32 D3DXTXB_LockRect ( # LPDIRECT3DTEXTURE9 *
+                            Ptr{Ptr{Void}}, Ptr{Void},) # D3DLOCKED_RECT *
+@mf d3dxtexturebmp UInt32 D3DXTXB_UnlockRect ( # LPDIRECT3DTEXTURE9 *
+                            Ptr{Ptr{Void}},)
 @mf d3dxtexturebmp UInt32 D3DXTXB_RenderFontGlyph (Ptr{Void}, # GLYPH_TBL
                             Ptr{Void}, Int32, Int32,) # FT_Bitmap
 @mf d3dxtexturebmp UInt32 D3DXTXB_CopyTexture ( # D3DLOCKED_RECT *
@@ -128,6 +143,17 @@ import Relocator: _mf, @mf, @cf, @wf
 @mf dx9adl Ptr{Void} PtrUO (Ptr{Void}, UInt32,) # RenderD3DItemsState
 @mf dx9adl UInt32 SetupMatrices (Ptr{Void},) # RenderD3DItemsState
 @mf dx9adl UInt32 DrawAxis (Ptr{Void},) # RenderD3DItemsState
+@mf dx9adl UInt32 DX9_CreateVertexBuffer (Ptr{Void}, # LPDIRECT3DDEVICE9
+                    UInt32, Ptr{Ptr{Void}},) # LPDIRECT3DVERTEXBUFFER9 *
+@mf dx9adl UInt32 DX9_Lock (Ptr{Ptr{Void}}, # LPDIRECT3DVERTEXBUFFER9 *
+                    UInt32, Ptr{Ptr{Void}},) # VOID **
+@mf dx9adl UInt32 DX9_Unlock (Ptr{Ptr{Void}},) # LPDIRECT3DVERTEXBUFFER9 *
+@mf dx9adl UInt32 DX9_StoreVertices (
+                    Ptr{Ptr{Void}}, # LPDIRECT3DVERTEXBUFFER9 *
+                    UInt32, Ptr{Void},) # CUSTOMVERTEX *
+@mf dx9adl UInt32 DX9_LoadVertices (
+                    Ptr{Void}, # CUSTOMVERTEX *
+                    UInt32, Ptr{Ptr{Void}},) # LPDIRECT3DVERTEXBUFFER9 *
 @mf dx9adl UInt32 DrawString (Ptr{Void}, # RenderD3DItemsState
                     UInt32, Ptr{Cchar}, UInt32,
                     Float32, Float32, Float32, Float32, Float32, Float32,)
@@ -142,3 +168,8 @@ import Relocator: _mf, @mf, @cf, @wf
 @mf dx9adl UInt32 MsgLoop (Ptr{Void},) # RenderD3DItemsState
 @mf dx9adl UInt32 DX9_Mode (Ptr{Void},) # RenderD3DItemsState
 @mf dx9adl UInt32 DX9_Status (Ptr{Void},) # RenderD3DItemsState
+
+@mf d3dxglyph UInt32 D3DXGLP_InitFont ()
+@mf d3dxglyph UInt32 D3DXGLP_CleanupFont ()
+@mf d3dxglyph UInt32 D3DXGLP_GlyphContours (Ptr{Void},) # GLYPH_TBL
+@mf d3dxglyph UInt32 D3DXGLP_DrawGlyph (Ptr{Void},) # GLYPH_TBL
