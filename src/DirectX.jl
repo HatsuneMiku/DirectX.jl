@@ -225,8 +225,8 @@ type Dx9adl
     # BAD @ptr ims.data
     # OK (@ptr ims.data) + 32 # OK but wrong way
     d9fnd.imstring = pointer(ims)
-    d9fnd.imw = 512
-    d9fnd.imh = 512
+    d9fnd.imw = res_default[1]
+    d9fnd.imh = res_default[2]
     menv.tmp = @ptr m_tmp
     menv.world = @ptr m_world
     menv.view = @ptr m_view
