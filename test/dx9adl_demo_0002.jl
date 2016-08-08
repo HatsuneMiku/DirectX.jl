@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-# dx9adl_demo_0001
+# dx9adl_demo_0002
 
 VERSION >= v"0.4.0-dev+6521" && __precompile__()
-module Demo_0001
+module Demo_0002
 
 include("../src/lib_fnc_defs.jl") # macros/functions with import Relocator: _mf
 
@@ -52,8 +52,6 @@ function initD3DItems(pIS::Ptr{RenderD3DItemsState})
   imp = replace(d9.respath * "/" * txs[1], "/", "\\") # only for Windows
   D3DXCreateTextureFromFileA(d9f.pDev, pointer(imp.data), PtrPtrU(pIS, TXSRC))
   D3DXTXB_CreateTexture(d9f.pDev, 256, 256, PtrPtrU(pIS, TXDST))
-  debugout("pTexSrc: %08X\n", PtrUO(pIS, TXSRC))
-  debugout("pTex: %08X\n", PtrUO(pIS, TXDST))
   if PtrUO(pIS, TXSRC) == C_NULL
     debugout("not found ? [%s]\n", pointer(imp.data))
     return 0::Cint
@@ -64,36 +62,18 @@ end
 function cleanupD3DItems(pIS::Ptr{RenderD3DItemsState})
   ist = @juliaobj pIS
   debugout("cleanupD3DItems: %08X\n", ist.stat)
-  # ReleaseNil(@ptr vg.pVtxGlyph) # *BAD*
-  # ReleaseNil((@ptr vg) + 2 * sizeof(Ptr{Void})) # obsoleted another pointer
-  # ReleaseNil(vg.ppVtxGlyph) # needless
-  debugout("pTex: %08X\n", PtrUO(pIS, TXDST))
-  debugout("pTexSrc: %08X\n", PtrUO(pIS, TXSRC))
   return 1::Cint
 end
 
 function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
-  # ist = pIS[1] # MethodError: `getindex` has no method matching
-                 #  getindex(::Ptr{DirectX.RenderD3DItemsState}, ::Int32)
-  # ist = unsafe_load(pIS, 1) # ok but curious
-  ist = @juliaobj pIS # good
-  if ist.stat & 0x00000001 != 0 # non Julia structure
-    d9f = D9Foundation() # (fake to copy and read only access)
-    memcpy((@ptr d9f), ist.d9fnd, sizeof(d9f))
-  else # Julia structure
-    d9f = @juliaobj ist.d9fnd # *BAD* for non Julia structure
-  end
+  ist = @juliaobj pIS # expect Julia structure
+  if ist.stat & 0x00000001 != 0; return 0::Cint; end
+  d9f = @juliaobj ist.d9fnd # expect Julia structure
   if ist.stat & 0x00008000 != 0
-    # println("type: ", typeof(d9f))
-    # println("size: ", sizeof(d9f))
-    # debugout("ppSprite[%08X]\n", PtrPtrS(pIS, PSO_SPRITE))
     pSprite = PtrSO(pIS, PSO_SPRITE)
-    # debugout("pSprite[%08X]\n", pSprite)
     D3DXTXB_RewriteTexture(PtrPtrU(pIS, TXDST), PtrPtrU(pIS, TXSRC))
     BltTexture(pIS, 0xFFFFFFFF, PtrPtrU(pIS, TXDST), 0, 0, 256, 256,
       0., 0., 0., 10., 100., 1.)
-    # ppTexture = @ptr d9f.pString # ok but obsoleted
-    # ppTexture = @ptr PtrSO(pIS, PSO_STRING) # ok but another pointer
     BltTexture(pIS, 0xFFFFFFFF, PtrPtrS(pIS, PSO_STRING), 0, 0, 512, 512,
       0., 0., 0., 10., 10., .5)
     BltString(pIS, 0xFF808080, "BLTSTRING", 2, 192, 32, 0.1)
@@ -154,7 +134,7 @@ function renderD3DItems(pIS::Ptr{RenderD3DItemsState})
   return 1::Cint
 end
 
-function demo_0001(d9)
+function demo_0002(d9)
   debugout("adl_test &d9.istat = %08X\n", @ptr d9.istat)
   hInst = GetModuleHandleA(C_NULL)
   nShow = 1 # 1: SW_SHOWNORMAL or 5: SW_SHOW
