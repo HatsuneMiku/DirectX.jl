@@ -154,6 +154,12 @@ import Relocator: _mf, @mf, @cf, @wf
 @mf dx9adl UInt32 DX9_LoadVertices (
                     Ptr{Void}, # CUSTOMVERTEX *
                     UInt32, Ptr{Ptr{Void}},) # LPDIRECT3DVERTEXBUFFER9 *
+@mf dx9adl UInt32 DX9_SetTexture (Ptr{Void}, # LPDIRECT3DDEVICE9
+                    Ptr{Ptr{Void}}, # LPDIRECT3DTEXTURE9 *
+                    UInt32,)
+@mf dx9adl UInt32 DX9_RenderVertices (Ptr{Void}, # LPDIRECT3DDEVICE9
+                    Ptr{Ptr{Void}}, # LPDIRECT3DVERTEXBUFFER9 *
+                    UInt32, UInt32, UInt32,)
 @mf dx9adl UInt32 DrawString (Ptr{Void}, # RenderD3DItemsState
                     UInt32, Ptr{Cchar}, UInt32,
                     Float32, Float32, Float32, Float32, Float32, Float32,)
