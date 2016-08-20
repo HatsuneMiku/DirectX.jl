@@ -33,7 +33,7 @@ function array_to(m::D3DMatrix, a::Array{Float32,2}) # 4x4 Array{Float32,2}
   m.ab = a[1, 2]; m.bb = a[2, 2]; m.cb = a[3, 2]; m.db = a[4, 2]
   m.ac = a[1, 3]; m.bc = a[2, 3]; m.cc = a[3, 3]; m.dc = a[4, 3]
   m.ad = a[1, 4]; m.bd = a[2, 4]; m.cd = a[3, 4]; m.dd = a[4, 4]
-  m
+  m # load like a.'
 end
 
 type Q_D3DMatrix # in dx9adl.h
@@ -203,8 +203,8 @@ type Dx9adl
     istat.d9fnd = @ptr d9fnd # or set C_NULL
     istat.width = w
     istat.height = h
-    istat.fgc = 0x80EE66CC
     istat.bgc = 0xFFFF80FF
+    istat.fgc = 0x80EE66CC
     istat.mode = 0x0CC00000
     # set mode 0 to skip debugalloc/debugfree
     d = new(bp, res, ims, d9fnd, istat) # set parent later
