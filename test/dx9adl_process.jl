@@ -6,7 +6,7 @@
 include("dx9adl_demo_0001.jl")
 
 println("test dx9adl with relocated dlls")
-d9 = DirectX.connect(55 * 16, 55 * 9, "/private/dx9")
+d9 = DirectX.connect(55 * 16, 55 * 9, "/private/dx9/dx9adl")
 Demo_0001.demo_0001(d9)
 DirectX.close(d9)
 println("ok")
